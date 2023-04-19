@@ -14,8 +14,6 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         public ScreenSpaceShadowResolvePass(RenderPassEvent evt, Material screenspaceShadowsMaterial)
         {
-            base.profilingSampler = new ProfilingSampler(nameof(ScreenSpaceShadowResolvePass));
-
             m_ScreenSpaceShadowsMaterial = screenspaceShadowsMaterial;
             m_ScreenSpaceShadowmap.Init("_ScreenSpaceShadowmapTexture");
             renderPassEvent = evt;
@@ -45,7 +43,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         {
             if (m_ScreenSpaceShadowsMaterial == null)
             {
-                Debug.LogErrorFormat("Missing {0}. {1} render pass will not execute. Check for missing reference in the renderer resources.", m_ScreenSpaceShadowsMaterial, GetType().Name);
                 return;
             }
 
@@ -55,21 +52,10 @@ namespace UnityEngine.Rendering.Universal.Internal
             Camera camera = renderingData.cameraData.camera;
 
             CommandBuffer cmd = CommandBufferPool.Get();
-            using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.ResolveShadows)))
-            {
-                if (!renderingData.cameraData.xr.enabled)
-                {
-                    cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
-                    cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_ScreenSpaceShadowsMaterial);
-                    cmd.SetViewProjectionMatrices(camera.worldToCameraMatrix, camera.projectionMatrix);
-                }
-                else
-                {
-                    // Avoid setting and restoring camera view and projection matrices when in stereo.
-                    RenderTargetIdentifier screenSpaceOcclusionTexture = m_ScreenSpaceShadowmap.Identifier();
-                    Blit(cmd, screenSpaceOcclusionTexture, screenSpaceOcclusionTexture, m_ScreenSpaceShadowsMaterial);
-                }
-            }
+            
+            cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
+            cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_ScreenSpaceShadowsMaterial);
+            cmd.SetViewProjectionMatrices(camera.worldToCameraMatrix, camera.projectionMatrix);
 
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);

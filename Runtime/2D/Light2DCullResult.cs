@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using UnityEngine.Profiling;
 
 namespace UnityEngine.Rendering.Universal
 {
@@ -54,7 +53,6 @@ namespace UnityEngine.Rendering.Universal
 
         public void SetupCulling(ref ScriptableCullingParameters cullingParameters, Camera camera)
         {
-            Profiler.BeginSample("Cull 2D Lights");
             m_VisibleLights.Clear();
             foreach (var light in Light2DManager.lights)
             {
@@ -72,7 +70,6 @@ namespace UnityEngine.Rendering.Universal
                     continue;
                 }
 
-                Profiler.BeginSample("Test Planes");
                 var position = light.boundingSphere.position;
                 var culled = false;
                 for (var i = 0; i < cullingParameters.cullingPlaneCount; ++i)
@@ -86,7 +83,6 @@ namespace UnityEngine.Rendering.Universal
                         break;
                     }
                 }
-                Profiler.EndSample();
                 if (culled)
                     continue;
 
@@ -95,7 +91,6 @@ namespace UnityEngine.Rendering.Universal
 
             // must be sorted here because light order could change
             m_VisibleLights.Sort((l1, l2) => l1.lightOrder - l2.lightOrder);
-            Profiler.EndSample();
         }
     }
 }

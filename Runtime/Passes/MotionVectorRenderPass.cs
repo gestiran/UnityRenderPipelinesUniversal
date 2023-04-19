@@ -7,9 +7,6 @@ namespace UnityEngine.Rendering.Universal.Internal
     {
         #region Fields
         const string kPreviousViewProjectionMatrix = "_PrevViewProjMatrix";
-#if ENABLE_VR && ENABLE_XR_MODULE
-        const string kPreviousViewProjectionMatrixStero = "_PrevViewProjMStereo";
-#endif
         const string kMotionVectorTexture = "_MotionVectorTexture";
         const GraphicsFormat m_TargetFormat = GraphicsFormat.R16G16_SFloat;
 
@@ -20,7 +17,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         readonly Material m_ObjectMaterial;
 
         PreviousFrameData m_MotionData;
-        ProfilingSampler m_ProfilingSampler = ProfilingSampler.Get(URPProfileId.MotionVectors);
         #endregion
 
         #region Constructors
@@ -73,33 +69,14 @@ namespace UnityEngine.Rendering.Universal.Internal
             if (camera.cameraType == CameraType.Preview)
                 return;
 
-            // Profiling command
             CommandBuffer cmd = CommandBufferPool.Get();
-            using (new ProfilingScope(cmd, m_ProfilingSampler))
-            {
-                int passID = motionData.GetXRMultiPassId(ref cameraData);
+            ExecuteCommand(context, cmd);
+            Shader.SetGlobalMatrix(kPreviousViewProjectionMatrix, m_MotionData.previousViewProjectionMatrix);
+            camera.depthTextureMode |= DepthTextureMode.MotionVectors | DepthTextureMode.Depth;
 
-                ExecuteCommand(context, cmd);
-#if ENABLE_VR && ENABLE_XR_MODULE
-                if (cameraData.xr.enabled && cameraData.xr.singlePassEnabled)
-                {
-                    m_CameraMaterial.SetMatrixArray(kPreviousViewProjectionMatrixStero, m_MotionData.previousViewProjectionMatrixStereo);
-                    m_ObjectMaterial.SetMatrixArray(kPreviousViewProjectionMatrixStero, m_MotionData.previousViewProjectionMatrixStereo);
-                }
-                else
-#endif
-                {
-                    Shader.SetGlobalMatrix(kPreviousViewProjectionMatrix, m_MotionData.previousViewProjectionMatrix);
-                }
+            DrawCameraMotionVectors(context, cmd, camera);
+            DrawObjectMotionVectors(context, ref renderingData, camera);
 
-                // These flags are still required in SRP or the engine won't compute previous model matrices...
-                // If the flag hasn't been set yet on this camera, motion vectors will skip a frame.
-                camera.depthTextureMode |= DepthTextureMode.MotionVectors | DepthTextureMode.Depth;
-
-                // TODO: add option to only draw either one?
-                DrawCameraMotionVectors(context, cmd, camera);
-                DrawObjectMotionVectors(context, ref renderingData, camera);
-            }
             ExecuteCommand(context, cmd);
             CommandBufferPool.Release(cmd);
         }

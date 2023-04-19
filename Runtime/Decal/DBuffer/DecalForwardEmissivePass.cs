@@ -11,7 +11,6 @@ namespace UnityEngine.Rendering.Universal
     internal class DecalForwardEmissivePass : ScriptableRenderPass
     {
         private FilteringSettings m_FilteringSettings;
-        private ProfilingSampler m_ProfilingSampler;
         private List<ShaderTagId> m_ShaderTagIdList;
         private DecalDrawFowardEmissiveSystem m_DrawSystem;
 
@@ -21,7 +20,6 @@ namespace UnityEngine.Rendering.Universal
             ConfigureInput(ScriptableRenderPassInput.Depth); // Require depth
 
             m_DrawSystem = drawSystem;
-            m_ProfilingSampler = new ProfilingSampler("Decal Forward Emissive Render");
             m_FilteringSettings = new FilteringSettings(RenderQueueRange.opaque, -1);
 
             m_ShaderTagIdList = new List<ShaderTagId>();
@@ -34,15 +32,14 @@ namespace UnityEngine.Rendering.Universal
             DrawingSettings drawingSettings = CreateDrawingSettings(m_ShaderTagIdList, ref renderingData, sortingCriteria);
 
             CommandBuffer cmd = CommandBufferPool.Get();
-            using (new ProfilingScope(cmd, m_ProfilingSampler))
-            {
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
 
-                m_DrawSystem.Execute(cmd);
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
 
-                context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref m_FilteringSettings);
-            }
+            m_DrawSystem.Execute(cmd);
+
+            context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref m_FilteringSettings);
+
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }

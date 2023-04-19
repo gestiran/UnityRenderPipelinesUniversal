@@ -4,14 +4,9 @@ using UnityEditor.ProjectWindowCallback;
 using ShaderKeywordFilter = UnityEditor.ShaderKeywordFilter;
 #endif
 using System;
-using UnityEngine.Scripting.APIUpdating;
-using UnityEngine.Assertions;
 
 namespace UnityEngine.Rendering.Universal
 {
-    /// <summary>
-    /// Defines if Unity will copy the depth that can be bound in shaders as _CameraDepthTexture after the opaques pass or after the transparents pass.
-    /// </summary>
     public enum CopyDepthMode
     {
         /// <summary>Depth will be copied after the opaques pass</summary>
@@ -84,12 +79,6 @@ namespace UnityEngine.Rendering.Universal
         }
 
         public PostProcessData postProcessData = null;
-
-#if ENABLE_VR && ENABLE_XR_MODULE
-        [Reload("Runtime/Data/XRSystemData.asset")]
-        public XRSystemData xrSystemData = null;
-#endif
-
         public ShaderResources shaders = null;
 
         const int k_LatestAssetVersion = 2;
@@ -258,7 +247,6 @@ namespace UnityEngine.Rendering.Universal
             get => m_TileSize;
             set
             {
-                Assert.IsTrue(value.IsValid());
                 SetDirty();
                 m_TileSize = value;
             }
@@ -304,10 +292,7 @@ namespace UnityEngine.Rendering.Universal
         {
 #if UNITY_EDITOR
             ResourceReloader.TryReloadAllNullIn(this, UniversalRenderPipelineAsset.packagePath);
-#if ENABLE_VR && ENABLE_XR_MODULE
-            ResourceReloader.TryReloadAllNullIn(xrSystemData, UniversalRenderPipelineAsset.packagePath);
-#endif
-#endif
+        #endif
         }
 
         void ISerializationCallbackReceiver.OnBeforeSerialize()

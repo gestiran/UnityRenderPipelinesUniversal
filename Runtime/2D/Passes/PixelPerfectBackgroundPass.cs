@@ -5,8 +5,7 @@ namespace UnityEngine.Rendering.Universal
     // In the future this can be extended to draw a custom background image instead of just clearing.
     internal class PixelPerfectBackgroundPass : ScriptableRenderPass
     {
-        private static readonly ProfilingSampler m_ProfilingScope = new ProfilingSampler("Pixel Perfect Background Pass");
-
+        
         public PixelPerfectBackgroundPass(RenderPassEvent evt)
         {
             renderPassEvent = evt;
@@ -15,18 +14,14 @@ namespace UnityEngine.Rendering.Universal
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             var cmd = CommandBufferPool.Get();
-
-            using (new ProfilingScope(cmd, m_ProfilingScope))
-            {
-                CoreUtils.SetRenderTarget(
+            
+            CoreUtils.SetRenderTarget(
                     cmd,
                     BuiltinRenderTextureType.CameraTarget,
                     RenderBufferLoadAction.DontCare,
                     RenderBufferStoreAction.Store,
                     ClearFlag.Color,
                     Color.black);
-            }
-
 
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);

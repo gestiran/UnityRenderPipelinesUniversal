@@ -59,12 +59,7 @@ namespace UnityEngine.Rendering.Universal
         public ShaderResources shaders;
 
         public PostProcessData postProcessData;
-
-#if ENABLE_VR && ENABLE_XR_MODULE
-        [Reload("Runtime/Data/XRSystemData.asset")]
-        public XRSystemData xrSystemData;
-#endif
-
+        
         [SerializeField] LayerMask m_OpaqueLayerMask;
         [SerializeField] LayerMask m_TransparentLayerMask;
         [SerializeField] StencilStateData m_DefaultStencilState; // This default state is compatible with deferred renderer.
@@ -77,7 +72,6 @@ namespace UnityEngine.Rendering.Universal
 
         protected override ScriptableRenderer Create()
         {
-            Debug.LogWarning($"Forward Renderer Data has been deprecated, {name} will be upgraded to a {nameof(UniversalRendererData)}.");
             return null;
         }
 

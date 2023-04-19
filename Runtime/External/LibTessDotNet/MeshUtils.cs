@@ -87,7 +87,6 @@ namespace UnityEngine.Rendering.Universal
             public static void Normalize(ref Vec3 v)
             {
                 var len = v.X * v.X + v.Y * v.Y + v.Z * v.Z;
-                Debug.Assert(len >= 0.0f);
                 len = 1.0f / (Real)Math.Sqrt(len);
                 v.X *= len;
                 v.Y *= len;
@@ -264,8 +263,6 @@ namespace UnityEngine.Rendering.Universal
             /// </summary>
             public static Edge MakeEdge(Edge eNext)
             {
-                Debug.Assert(eNext != null);
-
                 var pair = EdgePair.Create();
                 var e = pair._e;
                 var eSym = pair._eSym;

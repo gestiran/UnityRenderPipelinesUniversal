@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine.Serialization;
-using UnityEngine.Assertions;
 
 namespace UnityEngine.Rendering.Universal
 {
@@ -141,10 +140,6 @@ namespace UnityEngine.Rendering.Universal
         /// <param name="cameraData"></param>
         public static void UpdateVolumeStack(this Camera camera, UniversalAdditionalCameraData cameraData)
         {
-            Assert.IsNotNull(cameraData, "cameraData can not be null when updating the volume stack.");
-
-            // We only update the local volume stacks for cameras set to ViaScripting.
-            // Otherwise it will be updated in the frame.
             if (cameraData.requiresVolumeFrameworkUpdate)
                 return;
 
@@ -357,15 +352,11 @@ namespace UnityEngine.Rendering.Universal
             {
                 if (renderType != CameraRenderType.Base)
                 {
-                    var camera = gameObject.GetComponent<Camera>();
-                    Debug.LogWarning(string.Format("{0}: This camera is of {1} type. Only Base cameras can have a camera stack.", camera.name, renderType));
                     return null;
                 }
 
                 if (!scriptableRenderer.SupportsCameraStackingType(CameraRenderType.Base))
                 {
-                    var camera = gameObject.GetComponent<Camera>();
-                    Debug.LogWarning(string.Format("{0}: This camera has a ScriptableRenderer that doesn't support camera stacking. Camera stack is null.", camera.name));
                     return null;
                 }
                 return m_Cameras;
@@ -377,28 +368,14 @@ namespace UnityEngine.Rendering.Universal
 #if UNITY_EDITOR
             Undo.RecordObject(this, "Update camera stack");
 #endif
-            int prev = m_Cameras.Count;
-            m_Cameras.RemoveAll(cam => cam == null);
-            int curr = m_Cameras.Count;
-            int removedCamsCount = prev - curr;
-            if (removedCamsCount != 0)
-            {
-                Debug.LogWarning(name + ": " + removedCamsCount + " camera overlay" + (removedCamsCount > 1 ? "s" : "") + " no longer exists and will be removed from the camera stack.");
-            }
+    m_Cameras.RemoveAll(cam => cam == null);
         }
 
-        /// <summary>
-        /// If true, this camera will clear depth value before rendering. Only valid for Overlay cameras.
-        /// </summary>
         public bool clearDepth
         {
             get => m_ClearDepth;
         }
 
-        /// <summary>
-        /// Returns true if this camera needs to render depth information in a texture.
-        /// If enabled, depth texture is available to be bound and read from shaders as _CameraDepthTexture after rendering skybox.
-        /// </summary>
         public bool requiresDepthTexture
         {
             get
@@ -415,10 +392,6 @@ namespace UnityEngine.Rendering.Universal
             set { m_RequiresDepthTextureOption = (value) ? CameraOverrideOption.On : CameraOverrideOption.Off; }
         }
 
-        /// <summary>
-        /// Returns true if this camera requires to color information in a texture.
-        /// If enabled, color texture is available to be bound and read from shaders as _CameraOpaqueTexture after rendering skybox.
-        /// </summary>
         public bool requiresColorTexture
         {
             get
@@ -435,9 +408,6 @@ namespace UnityEngine.Rendering.Universal
             set { m_RequiresOpaqueTextureOption = (value) ? CameraOverrideOption.On : CameraOverrideOption.Off; }
         }
 
-        /// <summary>
-        /// Returns the <see cref="ScriptableRenderer"/> that is used to render this camera.
-        /// </summary>
         public ScriptableRenderer scriptableRenderer
         {
             get
@@ -456,18 +426,11 @@ namespace UnityEngine.Rendering.Universal
             }
         }
 
-        /// <summary>
-        /// Use this to set this Camera's current <see cref="ScriptableRenderer"/> to one listed on the Render Pipeline Asset. Takes an index that maps to the list on the Render Pipeline Asset.
-        /// </summary>
-        /// <param name="index">The index that maps to the RendererData list on the currently assigned Render Pipeline Asset</param>
         public void SetRenderer(int index)
         {
             m_RendererIndex = index;
         }
 
-        /// <summary>
-        /// Returns the selected scene-layers affecting this camera.
-        /// </summary>
         public LayerMask volumeLayerMask
         {
             get => m_VolumeLayerMask;

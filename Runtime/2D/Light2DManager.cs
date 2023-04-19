@@ -11,29 +11,13 @@ namespace UnityEngine.Rendering.Universal
         // Called during OnEnable
         public static void RegisterLight(Light2D light)
         {
-            Debug.Assert(!lights.Contains(light));
             lights.Add(light);
-            ErrorIfDuplicateGlobalLight(light);
         }
 
         // Called during OnEnable
         public static void DeregisterLight(Light2D light)
         {
-            Debug.Assert(lights.Contains(light));
             lights.Remove(light);
-        }
-
-        public static void ErrorIfDuplicateGlobalLight(Light2D light)
-        {
-            if (light.lightType != Light2D.LightType.Global)
-                return;
-
-            foreach (var sortingLayer in light.affectedSortingLayers)
-            {
-                // should this really trigger at runtime?
-                if (ContainsDuplicateGlobalLight(sortingLayer, light.blendStyleIndex))
-                    Debug.LogError("More than one global light on layer " + SortingLayer.IDToName(sortingLayer) + " for light blend style index " + light.blendStyleIndex);
-            }
         }
 
         public static bool GetGlobalColor(int sortingLayerIndex, int blendStyleIndex, out Color color)

@@ -84,11 +84,8 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         bool m_CreateEmptyShadowmap;
 
-        ProfilingSampler m_ProfilingSetupSampler = new ProfilingSampler("Setup Additional Shadows");
-
         public AdditionalLightsShadowCasterPass(RenderPassEvent evt)
         {
-            base.profilingSampler = new ProfilingSampler(nameof(AdditionalLightsShadowCasterPass));
             renderPassEvent = evt;
 
             AdditionalShadowsConstantBuffer._AdditionalLightsWorldToShadow = Shader.PropertyToID("_AdditionalLightsWorldToShadow");
@@ -205,7 +202,6 @@ namespace UnityEngine.Rendering.Universal.Internal
                 #if DEVELOPMENT_BUILD
                 if (!m_IssuedMessageAboutPointLightHardShadowResolutionTooSmall)
                 {
-                    Debug.LogWarning("Too many additional punctual lights shadows, increase shadow atlas size or remove some shadowed lights");
                     m_IssuedMessageAboutPointLightHardShadowResolutionTooSmall = true; // Only output this once per shadow requests configuration
                 }
                 #endif
@@ -232,8 +228,6 @@ namespace UnityEngine.Rendering.Universal.Internal
                     #if DEVELOPMENT_BUILD
                     if (!m_IssuedMessageAboutPointLightSoftShadowResolutionTooSmall)
                     {
-                        Debug.LogWarning("Too many additional punctual lights shadows to use Soft Shadows. Increase shadow atlas size, remove some shadowed lights or use Hard Shadows.");
-                        // With such small resolutions no fovBias can give good visual results
                         m_IssuedMessageAboutPointLightSoftShadowResolutionTooSmall = true; // Only output this once per shadow requests configuration
                     }
                     #endif
@@ -391,13 +385,11 @@ namespace UnityEngine.Rendering.Universal.Internal
             #if DEVELOPMENT_BUILD
             if (!m_IssuedMessageAboutShadowMapsTooBig && tooManyShadows)
             {
-                Debug.LogWarning($"Too many additional punctual lights shadows. URP tried reducing shadow resolutions by {shadowSlicesScaleFactor} but it was still too much. Increase shadow atlas size, decrease big shadow resolutions, or reduce the number of shadow maps active in the same frame (currently was {totalShadowSlicesCount}).");
                 m_IssuedMessageAboutShadowMapsTooBig = true; // Only output this once per shadow requests configuration
             }
 
             if (!m_IssuedMessageAboutShadowMapsRescale && shadowSlicesScaleFactor > 1)
             {
-                Debug.Log($"Reduced additional punctual light shadows resolution by {shadowSlicesScaleFactor} to make {totalShadowSlicesCount} shadow maps fit in the {atlasSize}x{atlasSize} shadow atlas. To avoid this, increase shadow atlas size, decrease big shadow resolutions, or reduce the number of shadow maps active in the same frame");
                 m_IssuedMessageAboutShadowMapsRescale = true; // Only output this once per shadow requests configuration
             }
             #endif
@@ -473,8 +465,6 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         public bool Setup(ref RenderingData renderingData)
         {
-            using var profScope = new ProfilingScope(null, m_ProfilingSetupSampler);
-
             Clear();
 
             renderTargetWidth = renderingData.shadowData.additionalLightsShadowmapWidth;
@@ -587,7 +577,6 @@ namespace UnityEngine.Rendering.Universal.Internal
             {
                 if (!m_IssuedMessageAboutRemovedShadowSlices)
                 {
-                    Debug.LogWarning($"Too many additional punctual lights shadows to look good, URP removed {totalShadowResolutionRequestsCount - totalShadowSlicesCount } shadow maps to make the others fit in the shadow atlas. To avoid this, increase shadow atlas size, remove some shadowed lights, replace soft shadows by hard shadows ; or replace point lights by spot lights");
                     m_IssuedMessageAboutRemovedShadowSlices = true;  // Only output this once per shadow requests configuration
                 }
             }
@@ -643,8 +632,6 @@ namespace UnityEngine.Rendering.Universal.Internal
                     #if DEVELOPMENT_BUILD
                     if (!m_IssuedMessageAboutShadowSlicesTooMany)
                     {
-                        // This case can especially happen in Deferred, where there can be a high number of visibleLights
-                        Debug.Log($"There are too many shadowed additional punctual lights active at the same time, URP will not render all the shadows. To ensure all shadows are rendered, reduce the number of shadowed additional lights in the scene ; make sure they are not active at the same time ; or replace point lights by spot lights (spot lights use less shadow maps than point lights).");
                         m_IssuedMessageAboutShadowSlicesTooMany = true; // Only output this once
                     }
                     #endif
@@ -885,61 +872,57 @@ namespace UnityEngine.Rendering.Universal.Internal
             NativeArray<VisibleLight> visibleLights = lightData.visibleLights;
 
             bool additionalLightHasSoftShadows = false;
-            // NOTE: Do NOT mix ProfilingScope with named CommandBuffers i.e. CommandBufferPool.Get("name").
-            // Currently there's an issue which results in mismatched markers.
+            
             CommandBuffer cmd = CommandBufferPool.Get();
-            using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.AdditionalLightsShadow)))
+            bool anyShadowSliceRenderer = false;
+            int shadowSlicesCount = m_ShadowSliceToAdditionalLightIndex.Count;
+            for (int globalShadowSliceIndex = 0; globalShadowSliceIndex < shadowSlicesCount; ++globalShadowSliceIndex)
             {
-                bool anyShadowSliceRenderer = false;
-                int shadowSlicesCount = m_ShadowSliceToAdditionalLightIndex.Count;
-                for (int globalShadowSliceIndex = 0; globalShadowSliceIndex < shadowSlicesCount; ++globalShadowSliceIndex)
-                {
-                    int additionalLightIndex = m_ShadowSliceToAdditionalLightIndex[globalShadowSliceIndex];
+                int additionalLightIndex = m_ShadowSliceToAdditionalLightIndex[globalShadowSliceIndex];
 
-                    // we do the shadow strength check here again here because we might have zero strength for non-shadow-casting lights.
-                    // In that case we need the shadow data buffer but we can skip rendering them to shadowmap.
-                    if (Mathf.Approximately(m_AdditionalLightIndexToShadowParams[additionalLightIndex].x, 0.0f) || Mathf.Approximately(m_AdditionalLightIndexToShadowParams[additionalLightIndex].w, -1.0f))
-                        continue;
+                // we do the shadow strength check here again here because we might have zero strength for non-shadow-casting lights.
+                // In that case we need the shadow data buffer but we can skip rendering them to shadowmap.
+                if (Mathf.Approximately(m_AdditionalLightIndexToShadowParams[additionalLightIndex].x, 0.0f) || Mathf.Approximately(m_AdditionalLightIndexToShadowParams[additionalLightIndex].w, -1.0f))
+                    continue;
 
-                    int visibleLightIndex = m_AdditionalLightIndexToVisibleLightIndex[additionalLightIndex];
-                    var originalLightIndex = lightData.originalIndices[visibleLightIndex];
+                int visibleLightIndex = m_AdditionalLightIndexToVisibleLightIndex[additionalLightIndex];
+                var originalLightIndex = lightData.originalIndices[visibleLightIndex];
 
-                    VisibleLight shadowLight = visibleLights[visibleLightIndex];
+                VisibleLight shadowLight = visibleLights[visibleLightIndex];
 
-                    ShadowSliceData shadowSliceData = m_AdditionalLightsShadowSlices[globalShadowSliceIndex];
+                ShadowSliceData shadowSliceData = m_AdditionalLightsShadowSlices[globalShadowSliceIndex];
 
-                    var settings = new ShadowDrawingSettings(cullResults, originalLightIndex);
-                    settings.useRenderingLayerMaskTest = UniversalRenderPipeline.asset.supportsLightLayers;
-                    settings.splitData = shadowSliceData.splitData;
-                    Vector4 shadowBias = ShadowUtils.GetShadowBias(ref shadowLight, visibleLightIndex,
+                var settings = new ShadowDrawingSettings(cullResults, originalLightIndex);
+                settings.useRenderingLayerMaskTest = UniversalRenderPipeline.asset.supportsLightLayers;
+                settings.splitData = shadowSliceData.splitData;
+                Vector4 shadowBias = ShadowUtils.GetShadowBias(ref shadowLight, visibleLightIndex,
                         ref shadowData, shadowSliceData.projectionMatrix, shadowSliceData.resolution);
-                    ShadowUtils.SetupShadowCasterConstantBuffer(cmd, ref shadowLight, shadowBias);
-                    CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.CastingPunctualLightShadow, true);
-                    ShadowUtils.RenderShadowSlice(cmd, ref context, ref shadowSliceData, ref settings);
-                    additionalLightHasSoftShadows |= shadowLight.light.shadows == LightShadows.Soft;
-                    anyShadowSliceRenderer = true;
-                }
-
-                // We share soft shadow settings for main light and additional lights to save keywords.
-                // So we check here if pipeline supports soft shadows and either main light or any additional light has soft shadows
-                // to enable the keyword.
-                // TODO: In PC and Consoles we can upload shadow data per light and branch on shader. That will be more likely way faster.
-                bool mainLightHasSoftShadows = shadowData.supportsMainLightShadows &&
-                    lightData.mainLightIndex != -1 &&
-                    visibleLights[lightData.mainLightIndex].light.shadows ==
-                    LightShadows.Soft;
-
-                bool softShadows = shadowData.supportsSoftShadows &&
-                    (mainLightHasSoftShadows || additionalLightHasSoftShadows);
-
-                shadowData.isKeywordAdditionalLightShadowsEnabled = anyShadowSliceRenderer;
-                shadowData.isKeywordSoftShadowsEnabled = softShadows;
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.AdditionalLightShadows, shadowData.isKeywordAdditionalLightShadowsEnabled);
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.SoftShadows, shadowData.isKeywordSoftShadowsEnabled);
-
-                if (anyShadowSliceRenderer)
-                    SetupAdditionalLightsShadowReceiverConstants(cmd, softShadows);
+                ShadowUtils.SetupShadowCasterConstantBuffer(cmd, ref shadowLight, shadowBias);
+                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.CastingPunctualLightShadow, true);
+                ShadowUtils.RenderShadowSlice(cmd, ref context, ref shadowSliceData, ref settings);
+                additionalLightHasSoftShadows |= shadowLight.light.shadows == LightShadows.Soft;
+                anyShadowSliceRenderer = true;
             }
+
+            // We share soft shadow settings for main light and additional lights to save keywords.
+            // So we check here if pipeline supports soft shadows and either main light or any additional light has soft shadows
+            // to enable the keyword.
+            // TODO: In PC and Consoles we can upload shadow data per light and branch on shader. That will be more likely way faster.
+            bool mainLightHasSoftShadows = shadowData.supportsMainLightShadows &&
+                                           lightData.mainLightIndex != -1 &&
+                                           visibleLights[lightData.mainLightIndex].light.shadows ==
+                                           LightShadows.Soft;
+
+            bool softShadows = shadowData.supportsSoftShadows &&
+                               (mainLightHasSoftShadows || additionalLightHasSoftShadows);
+
+            shadowData.isKeywordAdditionalLightShadowsEnabled = anyShadowSliceRenderer;
+            shadowData.isKeywordSoftShadowsEnabled = softShadows;
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.AdditionalLightShadows, shadowData.isKeywordAdditionalLightShadowsEnabled);
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.SoftShadows, shadowData.isKeywordSoftShadowsEnabled);
+
+            if (anyShadowSliceRenderer)
+                SetupAdditionalLightsShadowReceiverConstants(cmd, softShadows);
 
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);

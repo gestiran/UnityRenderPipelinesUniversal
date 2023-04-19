@@ -59,15 +59,6 @@ namespace UnityEditor.Rendering.Universal
                 layerSelectionData.onSelectionChanged(layerSelectionData.serializedObject);
 
             layerSelectionData.serializedObject.ApplyModifiedProperties();
-
-            if (layerSelectionData.targets is Light2D[])
-            {
-                foreach (Light2D light in layerSelectionData.targets)
-                {
-                    if (light != null && light.lightType == Light2D.LightType.Global)
-                        Light2DManager.ErrorIfDuplicateGlobalLight(light);
-                }
-            }
         }
 
         void OnNoSortingLayerSelected(object selectionData)

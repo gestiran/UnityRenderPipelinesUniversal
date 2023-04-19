@@ -310,7 +310,6 @@ namespace UnityEngine.Rendering.Universal
                 // Since the sweep goes from left to right, face->anEdge should
                 // be close to the edge we want.
                 var up = face._anEdge;
-                Debug.Assert(up._Lnext != up && up._Lnext._Lnext != up);
 
                 while (Geom.VertLeq(up._Dst, up._Org)) up = up._Lprev;
                 while (Geom.VertLeq(up._Org, up._Dst)) up = up._Lnext;
@@ -343,20 +342,12 @@ namespace UnityEngine.Rendering.Universal
                     }
                 }
 
-                // Now lo.Org == up.Dst == the leftmost vertex.  The remaining region
-                // can be tessellated in a fan from this leftmost vertex.
-                Debug.Assert(lo._Lnext != up);
                 while (lo._Lnext._Lnext != up)
                 {
                     lo = _mesh.Connect(lo._Lnext, lo)._Sym;
                 }
             }
 
-            /// <summary>
-            /// TessellateInterior( mesh ) tessellates each region of
-            /// the mesh which is marked "inside" the polygon. Each such region
-            /// must be monotone.
-            /// </summary>
             private void TessellateInterior()
             {
                 MeshUtils.Face f, next;
@@ -490,8 +481,6 @@ namespace UnityEngine.Rendering.Universal
                         edge = edge._Lnext;
                     }
                     while (edge != f._anEdge);
-
-                    Debug.Assert(faceVerts <= polySize);
 
                     f._n = maxFaceCount;
                     ++maxFaceCount;

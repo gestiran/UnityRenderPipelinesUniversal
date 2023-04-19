@@ -39,11 +39,8 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         bool m_CreateEmptyShadowmap;
 
-        ProfilingSampler m_ProfilingSetupSampler = new ProfilingSampler("Setup Main Shadowmap");
-
         public MainLightShadowCasterPass(RenderPassEvent evt)
         {
-            base.profilingSampler = new ProfilingSampler(nameof(MainLightShadowCasterPass));
             renderPassEvent = evt;
 
             m_MainLightShadowMatrices = new Matrix4x4[k_MaxCascades + 1];
@@ -68,8 +65,6 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         public bool Setup(ref RenderingData renderingData)
         {
-            using var profScope = new ProfilingScope(null, m_ProfilingSetupSampler);
-
             if (!renderingData.shadowData.supportsMainLightShadows)
                 return SetupForEmptyRendering(ref renderingData);
 
@@ -82,12 +77,7 @@ namespace UnityEngine.Rendering.Universal.Internal
             Light light = shadowLight.light;
             if (light.shadows == LightShadows.None)
                 return SetupForEmptyRendering(ref renderingData);
-
-            if (shadowLight.lightType != LightType.Directional)
-            {
-                Debug.LogWarning("Only directional lights are supported as main light.");
-            }
-
+            
             Bounds bounds;
             if (!renderingData.cullResults.GetShadowCasterBounds(shadowLightIndex, out bounds))
                 return SetupForEmptyRendering(ref renderingData);
@@ -197,33 +187,28 @@ namespace UnityEngine.Rendering.Universal.Internal
                 return;
 
             VisibleLight shadowLight = lightData.visibleLights[shadowLightIndex];
-
-            // NOTE: Do NOT mix ProfilingScope with named CommandBuffers i.e. CommandBufferPool.Get("name").
-            // Currently there's an issue which results in mismatched markers.
             CommandBuffer cmd = CommandBufferPool.Get();
-            using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.MainLightShadow)))
+
+            var settings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
+            settings.useRenderingLayerMaskTest = UniversalRenderPipeline.asset.supportsLightLayers;
+
+            for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
             {
-                var settings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
-                settings.useRenderingLayerMaskTest = UniversalRenderPipeline.asset.supportsLightLayers;
+                settings.splitData = m_CascadeSlices[cascadeIndex].splitData;
 
-                for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
-                {
-                    settings.splitData = m_CascadeSlices[cascadeIndex].splitData;
-
-                    Vector4 shadowBias = ShadowUtils.GetShadowBias(ref shadowLight, shadowLightIndex, ref shadowData, m_CascadeSlices[cascadeIndex].projectionMatrix, m_CascadeSlices[cascadeIndex].resolution);
-                    ShadowUtils.SetupShadowCasterConstantBuffer(cmd, ref shadowLight, shadowBias);
-                    CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.CastingPunctualLightShadow, false);
-                    ShadowUtils.RenderShadowSlice(cmd, ref context, ref m_CascadeSlices[cascadeIndex],
+                Vector4 shadowBias = ShadowUtils.GetShadowBias(ref shadowLight, shadowLightIndex, ref shadowData, m_CascadeSlices[cascadeIndex].projectionMatrix, m_CascadeSlices[cascadeIndex].resolution);
+                ShadowUtils.SetupShadowCasterConstantBuffer(cmd, ref shadowLight, shadowBias);
+                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.CastingPunctualLightShadow, false);
+                ShadowUtils.RenderShadowSlice(cmd, ref context, ref m_CascadeSlices[cascadeIndex],
                         ref settings, m_CascadeSlices[cascadeIndex].projectionMatrix, m_CascadeSlices[cascadeIndex].viewMatrix);
-                }
-
-                shadowData.isKeywordSoftShadowsEnabled = shadowLight.light.shadows == LightShadows.Soft && shadowData.supportsSoftShadows;
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadows, shadowData.mainLightShadowCascadesCount == 1);
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowCascades, shadowData.mainLightShadowCascadesCount > 1);
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.SoftShadows, shadowData.isKeywordSoftShadowsEnabled);
-
-                SetupMainLightShadowReceiverConstants(cmd, shadowLight, shadowData.supportsSoftShadows);
             }
+
+            shadowData.isKeywordSoftShadowsEnabled = shadowLight.light.shadows == LightShadows.Soft && shadowData.supportsSoftShadows;
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadows, shadowData.mainLightShadowCascadesCount == 1);
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowCascades, shadowData.mainLightShadowCascadesCount > 1);
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.SoftShadows, shadowData.isKeywordSoftShadowsEnabled);
+
+            SetupMainLightShadowReceiverConstants(cmd, shadowLight, shadowData.supportsSoftShadows);
 
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);

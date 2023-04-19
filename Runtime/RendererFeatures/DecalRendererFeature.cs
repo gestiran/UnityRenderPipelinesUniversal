@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using UnityEngine.Assertions;
 using UnityEngine.Rendering.Universal.Internal;
 #if UNITY_EDITOR
 using ShaderKeywordFilter = UnityEditor.ShaderKeywordFilter;
@@ -89,8 +88,6 @@ namespace UnityEngine.Rendering.Universal
         {
             if (m_DecalEntityManager == null)
             {
-                Assert.AreEqual(m_ReferenceCounter, 0);
-
                 m_DecalEntityManager = new DecalEntityManager();
 
                 var decalProjectors = GameObject.FindObjectsOfType<DecalProjector>();
@@ -259,7 +256,6 @@ namespace UnityEngine.Rendering.Universal
             var universalRenderer = renderer as UniversalRendererData;
             if (universalRenderer == null)
             {
-                Debug.LogError("Only universal renderer supports Decal renderer feature.");
                 return DecalTechnique.Invalid;
             }
 
@@ -272,7 +268,6 @@ namespace UnityEngine.Rendering.Universal
             var universalRenderer = renderer as UniversalRenderer;
             if (universalRenderer == null)
             {
-                Debug.LogError("Only universal renderer supports Decal renderer feature.");
                 return DecalTechnique.Invalid;
             }
 
@@ -284,7 +279,6 @@ namespace UnityEngine.Rendering.Universal
         {
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.OpenGLES2)
             {
-                Debug.LogError("Decals are not supported with OpenGLES2.");
                 return DecalTechnique.Invalid;
             }
 
@@ -311,13 +305,11 @@ namespace UnityEngine.Rendering.Universal
             bool mrt4 = SystemInfo.supportedRenderTargetCount >= 4;
             if (technique == DecalTechnique.DBuffer && !mrt4)
             {
-                Debug.LogError("Decal DBuffer technique requires MRT4 support.");
                 return DecalTechnique.Invalid;
             }
 
             if (technique == DecalTechnique.GBuffer && !mrt4)
             {
-                Debug.LogError("Decal useGBuffer option requires MRT4 support.");
                 return DecalTechnique.Invalid;
             }
 
@@ -372,7 +364,6 @@ namespace UnityEngine.Rendering.Universal
             m_DrawErrorSystem = new DecalDrawErrorSystem(m_DecalEntityManager, m_Technique);
 
             var universalRenderer = renderer as UniversalRenderer;
-            Assert.IsNotNull(universalRenderer);
 
             switch (m_Technique)
             {
@@ -415,12 +406,8 @@ namespace UnityEngine.Rendering.Universal
                 return;
 
             RecreateSystemsIfNeeded(renderer, cameraData);
-
-            ChangeAdaptivePerformanceDrawDistances();
-
+            
             m_DecalEntityManager.Update();
-
-
             m_DecalUpdateCachedSystem.Execute();
 
             if (intermediateRendering)
@@ -454,9 +441,7 @@ namespace UnityEngine.Rendering.Universal
             }
 
             RecreateSystemsIfNeeded(renderer, renderingData.cameraData);
-
-            ChangeAdaptivePerformanceDrawDistances();
-
+            
             if (intermediateRendering)
             {
                 m_DecalUpdateCulledSystem.Execute();
@@ -511,24 +496,6 @@ namespace UnityEngine.Rendering.Universal
                 m_DecalEntityManager = null;
                 sharedDecalEntityManager.Release(m_DecalEntityManager);
             }
-        }
-
-        [Conditional("ADAPTIVE_PERFORMANCE_4_0_0_OR_NEWER")]
-        private void ChangeAdaptivePerformanceDrawDistances()
-        {
-#if ADAPTIVE_PERFORMANCE_4_0_0_OR_NEWER
-            if (UniversalRenderPipeline.asset.useAdaptivePerformance)
-            {
-                if (m_DecalCreateDrawCallSystem != null)
-                {
-                    m_DecalCreateDrawCallSystem.maxDrawDistance = AdaptivePerformance.AdaptivePerformanceRenderSettings.DecalsDrawDistance;
-                }
-                if (m_DecalUpdateCullingGroupSystem != null)
-                {
-                    m_DecalUpdateCullingGroupSystem.boundingDistance = AdaptivePerformance.AdaptivePerformanceRenderSettings.DecalsDrawDistance;
-                }
-            }
-#endif
         }
     }
 }

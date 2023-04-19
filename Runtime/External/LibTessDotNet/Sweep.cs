@@ -102,13 +102,6 @@ namespace UnityEngine.Rendering.Universal
 
             private void DeleteRegion(ActiveRegion reg)
             {
-                if (reg._fixUpperEdge)
-                {
-                    // It was created with zero winding number, so it better be
-                    // deleted with zero winding number (ie. it better not get merged
-                    // with a real edge).
-                    Debug.Assert(reg._eUp._winding == 0);
-                }
                 reg._eUp._activeRegion = null;
                 _dict.Remove(reg._nodeUp);
             }
@@ -118,7 +111,6 @@ namespace UnityEngine.Rendering.Universal
             /// </summary>
             private void FixUpperEdge(ActiveRegion reg, MeshUtils.Edge newEdge)
             {
-                Debug.Assert(reg._fixUpperEdge);
                 _mesh.Delete(reg._eUp);
                 reg._fixUpperEdge = false;
                 reg._eUp = newEdge;
@@ -276,7 +268,6 @@ namespace UnityEngine.Rendering.Universal
 
                 var e = eFirst; do
                 {
-                    Debug.Assert(Geom.VertLeq(e._Org, e._Dst));
                     AddRegionBelow(regUp, e._Sym);
                     e = e._Onext;
                 }
@@ -322,7 +313,6 @@ namespace UnityEngine.Rendering.Universal
                     ePrev = e;
                 }
                 regPrev._dirty = true;
-                Debug.Assert(regPrev._windingNumber - e._winding == reg._windingNumber);
 
                 if (cleanUp)
                 {
@@ -474,8 +464,6 @@ namespace UnityEngine.Rendering.Universal
                 var eUp = regUp._eUp;
                 var eLo = regLo._eUp;
 
-                Debug.Assert(!Geom.VertEq(eUp._Dst, eLo._Dst));
-
                 if (Geom.VertLeq(eUp._Dst, eLo._Dst))
                 {
                     if (Geom.EdgeSign(eUp._Dst, eLo._Dst, eUp._Org) < 0.0f)
@@ -524,12 +512,6 @@ namespace UnityEngine.Rendering.Universal
                 var dstUp = eUp._Dst;
                 var dstLo = eLo._Dst;
 
-                Debug.Assert(!Geom.VertEq(dstLo, dstUp));
-                Debug.Assert(Geom.EdgeSign(dstUp, _event, orgUp) <= 0.0f);
-                Debug.Assert(Geom.EdgeSign(dstLo, _event, orgLo) >= 0.0f);
-                Debug.Assert(orgUp != _event && orgLo != _event);
-                Debug.Assert(!regUp._fixUpperEdge && !regLo._fixUpperEdge);
-
                 if (orgUp == orgLo)
                 {
                     // right endpoints are the same
@@ -563,11 +545,6 @@ namespace UnityEngine.Rendering.Universal
 
                 var isect = MeshUtils.Vertex.Create();
                 Geom.EdgeIntersect(dstUp, orgUp, dstLo, orgLo, isect);
-                // The following properties are guaranteed:
-                Debug.Assert(Math.Min(orgUp._t, dstUp._t) <= isect._t);
-                Debug.Assert(isect._t <= Math.Max(orgLo._t, dstLo._t));
-                Debug.Assert(Math.Min(dstLo._s, dstUp._s) <= isect._s);
-                Debug.Assert(isect._s <= Math.Max(orgLo._s, orgUp._s));
 
                 if (Geom.VertLeq(isect, _event))
                 {
@@ -1056,15 +1033,6 @@ namespace UnityEngine.Rendering.Universal
                 ActiveRegion reg;
                 while ((reg = _dict.Min().Key) != null)
                 {
-                    // At the end of all processing, the dictionary should contain
-                    // only the two sentinel edges, plus at most one "fixable" edge
-                    // created by ConnectRightVertex().
-                    if (!reg._sentinel)
-                    {
-                        Debug.Assert(reg._fixUpperEdge);
-                        Debug.Assert(++fixedEdges == 1);
-                    }
-                    Debug.Assert(reg._windingNumber == 0);
                     DeleteRegion(reg);
                 }
 
@@ -1171,7 +1139,6 @@ namespace UnityEngine.Rendering.Universal
                 {
                     fNext = f._next;
                     e = f._anEdge;
-                    Debug.Assert(e._Lnext != e);
 
                     if (e._Lnext._Lnext == e)
                     {

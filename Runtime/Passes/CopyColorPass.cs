@@ -24,8 +24,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// </summary>
         public CopyColorPass(RenderPassEvent evt, Material samplingMaterial, Material copyColorMaterial = null)
         {
-            base.profilingSampler = new ProfilingSampler(nameof(CopyColorPass));
-
             m_SamplingMaterial = samplingMaterial;
             m_CopyColorMaterial = copyColorMaterial;
             m_SampleOffsetShaderHandle = Shader.PropertyToID("_SampleOffset");
@@ -70,7 +68,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         {
             if (m_SamplingMaterial == null)
             {
-                Debug.LogErrorFormat("Missing {0}. {1} render pass will not execute. Check for missing reference in the renderer resources.", m_SamplingMaterial, GetType().Name);
                 return;
             }
 
@@ -82,30 +79,26 @@ namespace UnityEngine.Rendering.Universal.Internal
                 source = renderingData.cameraData.renderer.cameraColorTarget;
             }
 
-            using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.CopyColor)))
-            {
-                RenderTargetIdentifier opaqueColorRT = destination.Identifier();
+            RenderTargetIdentifier opaqueColorRT = destination.Identifier();
 
-                ScriptableRenderer.SetRenderTarget(cmd, opaqueColorRT, BuiltinRenderTextureType.CameraTarget, clearFlag,
+            ScriptableRenderer.SetRenderTarget(cmd, opaqueColorRT, BuiltinRenderTextureType.CameraTarget, clearFlag,
                     clearColor);
 
-                bool useDrawProceduleBlit = renderingData.cameraData.xr.enabled;
-                switch (m_DownsamplingMethod)
-                {
-                    case Downsampling.None:
-                        RenderingUtils.Blit(cmd, source, opaqueColorRT, m_CopyColorMaterial, 0, useDrawProceduleBlit);
-                        break;
-                    case Downsampling._2xBilinear:
-                        RenderingUtils.Blit(cmd, source, opaqueColorRT, m_CopyColorMaterial, 0, useDrawProceduleBlit);
-                        break;
-                    case Downsampling._4xBox:
-                        m_SamplingMaterial.SetFloat(m_SampleOffsetShaderHandle, 2);
-                        RenderingUtils.Blit(cmd, source, opaqueColorRT, m_SamplingMaterial, 0, useDrawProceduleBlit);
-                        break;
-                    case Downsampling._4xBilinear:
-                        RenderingUtils.Blit(cmd, source, opaqueColorRT, m_CopyColorMaterial, 0, useDrawProceduleBlit);
-                        break;
-                }
+            switch (m_DownsamplingMethod)
+            {
+                case Downsampling.None:
+                    RenderingUtils.Blit(cmd, source, opaqueColorRT, m_CopyColorMaterial, 0);
+                    break;
+                case Downsampling._2xBilinear:
+                    RenderingUtils.Blit(cmd, source, opaqueColorRT, m_CopyColorMaterial, 0);
+                    break;
+                case Downsampling._4xBox:
+                    m_SamplingMaterial.SetFloat(m_SampleOffsetShaderHandle, 2);
+                    RenderingUtils.Blit(cmd, source, opaqueColorRT, m_SamplingMaterial, 0);
+                    break;
+                case Downsampling._4xBilinear:
+                    RenderingUtils.Blit(cmd, source, opaqueColorRT, m_CopyColorMaterial, 0);
+                    break;
             }
 
             context.ExecuteCommandBuffer(cmd);

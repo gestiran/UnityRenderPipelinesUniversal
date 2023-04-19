@@ -200,12 +200,6 @@ namespace UnityEngine.Rendering.Universal
         private bool[] m_OverriddenColorStoreActions = new bool[] { false };
         private bool m_OverriddenDepthStoreAction = false;
 
-        /// <summary>
-        /// A ProfilingSampler for the entire render pass. Used as a profiling name by <c>ScriptableRenderer</c> when executing the pass.
-        /// Default is <c>Unnamed_ScriptableRenderPass</c>.
-        /// Set <c>base.profilingSampler</c> from the sub-class constructor to set a profiling name for a custom <c>ScriptableRenderPass</c>.
-        /// </summary>
-        protected internal ProfilingSampler profilingSampler { get; set; }
         internal bool overrideCameraTarget { get; set; }
         internal bool isBlitRenderPass { get; set; }
 
@@ -256,7 +250,6 @@ namespace UnityEngine.Rendering.Universal
             m_ClearColor = Color.black;
             overrideCameraTarget = false;
             isBlitRenderPass = false;
-            profilingSampler = new ProfilingSampler($"Unnamed_{nameof(ScriptableRenderPass)}");
             useNativeRenderPass = true;
             renderTargetWidth = -1;
             renderTargetHeight = -1;
@@ -342,13 +335,7 @@ namespace UnityEngine.Rendering.Universal
         {
             return m_InputAttachmentIsTransient[idx];
         }
-        /// <summary>
-        /// Configures render targets for this render pass. Call this instead of CommandBuffer.SetRenderTarget.
-        /// This method should be called inside Configure.
-        /// </summary>
-        /// <param name="colorAttachment">Color attachment identifier.</param>
-        /// <param name="depthAttachment">Depth attachment identifier.</param>
-        /// <seealso cref="Configure"/>
+        
         public void ConfigureTarget(RenderTargetIdentifier colorAttachment, RenderTargetIdentifier depthAttachment)
         {
             m_DepthAttachment = depthAttachment;
@@ -361,21 +348,9 @@ namespace UnityEngine.Rendering.Universal
             ConfigureTarget(colorAttachment, format);
         }
 
-        /// <summary>
-        /// Configures render targets for this render pass. Call this instead of CommandBuffer.SetRenderTarget.
-        /// This method should be called inside Configure.
-        /// </summary>
-        /// <param name="colorAttachment">Color attachment identifier.</param>
-        /// <param name="depthAttachment">Depth attachment identifier.</param>
-        /// <seealso cref="Configure"/>
         public void ConfigureTarget(RenderTargetIdentifier[] colorAttachments, RenderTargetIdentifier depthAttachment)
         {
             overrideCameraTarget = true;
-
-            uint nonNullColorBuffers = RenderingUtils.GetValidColorBufferCount(colorAttachments);
-            if (nonNullColorBuffers > SystemInfo.supportedRenderTargetCount)
-                Debug.LogError("Trying to set " + nonNullColorBuffers + " renderTargets, which is more than the maximum supported:" + SystemInfo.supportedRenderTargetCount);
-
             m_ColorAttachments = colorAttachments;
             m_DepthAttachment = depthAttachment;
         }
@@ -567,7 +542,6 @@ namespace UnityEngine.Rendering.Universal
         {
             if (shaderTagIdList == null || shaderTagIdList.Count == 0)
             {
-                Debug.LogWarning("ShaderTagId list is invalid. DrawingSettings is created with default pipeline ShaderTagId");
                 return CreateDrawingSettings(new ShaderTagId("UniversalPipeline"), ref renderingData, sortingCriteria);
             }
 

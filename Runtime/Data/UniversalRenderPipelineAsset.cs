@@ -89,14 +89,7 @@ namespace UnityEngine.Rendering.Universal
         [InspectorName("All Shaders")]
         AllShaders
     }
-
-    [Obsolete("PipelineDebugLevel is unused and has no effect.", false)]
-    public enum PipelineDebugLevel
-    {
-        Disabled,
-        Profiling,
-    }
-
+    
     public enum RendererType
     {
         Custom,
@@ -301,7 +294,6 @@ namespace UnityEngine.Rendering.Universal
         // TODO: Filtering WriteRenderingLayers requires different filter triggers for different passes (i.e. per-pass filter attributes)
 #endif
         [SerializeField] bool m_SupportsLightLayers = false;
-        [SerializeField] [Obsolete] PipelineDebugLevel m_DebugLevel;
 
         // Adaptive performance settings
         [SerializeField] bool m_UseAdaptivePerformance = true;
@@ -466,10 +458,7 @@ namespace UnityEngine.Rendering.Universal
                 if (m_RendererDataList[m_DefaultRendererIndex].GetType().ToString()
                     .Contains("Universal.ForwardRendererData"))
                     return null;
-
-                Debug.LogError(
-                    $"Default Renderer is missing, make sure there is a Renderer assigned as the default on the current Universal RP asset:{UniversalRenderPipeline.asset.name}",
-                    this);
+                
                 return null;
             }
 
@@ -569,7 +558,6 @@ namespace UnityEngine.Rendering.Universal
             {
                 if (m_RendererDataList?.Length > m_DefaultRendererIndex && m_RendererDataList[m_DefaultRendererIndex] == null)
                 {
-                    Debug.LogError("Default renderer is missing from the current Pipeline Asset.", this);
                     return null;
                 }
 
@@ -595,9 +583,6 @@ namespace UnityEngine.Rendering.Universal
 
             if (index >= m_RendererDataList.Length || index < 0 || m_RendererDataList[index] == null)
             {
-                Debug.LogWarning(
-                    $"Renderer at index {index.ToString()} is missing, falling back to Default Renderer {m_RendererDataList[m_DefaultRendererIndex].name}",
-                    this);
                 index = m_DefaultRendererIndex;
             }
 
@@ -682,7 +667,6 @@ namespace UnityEngine.Rendering.Universal
                 if (result == GraphicsFormat.None)
                 {
                     result = GraphicsFormat.R8G8B8A8_UNorm;
-                    Debug.LogWarning($"Additional Lights Cookie Format ({ m_AdditionalLightsCookieFormat.ToString() }) is not supported by the platform. Falling back to {GraphicsFormatUtility.GetBlockSize(result) * 8}-bit format ({GraphicsFormatUtility.GetFormatString(result)})");
                 }
 
                 return result;
@@ -1012,13 +996,7 @@ namespace UnityEngine.Rendering.Universal
         /// Returns the selected update mode for volumes.
         /// </summary>
         public VolumeFrameworkUpdateMode volumeFrameworkUpdateMode => m_VolumeFrameworkUpdateMode;
-
-        [Obsolete("PipelineDebugLevel is deprecated. Calling debugLevel is not necessary.", false)]
-        public PipelineDebugLevel debugLevel
-        {
-            get => PipelineDebugLevel.Disabled;
-        }
-
+        
         public bool useSRPBatcher
         {
             get { return m_UseSRPBatcher; }

@@ -74,7 +74,7 @@ namespace UnityEngine.Experimental.Rendering.Universal
             if (settings.Event < RenderPassEvent.BeforeRenderingPrePasses)
                 settings.Event = RenderPassEvent.BeforeRenderingPrePasses;
 
-            renderObjectsPass = new RenderObjectsPass(settings.passTag, settings.Event, filter.PassNames,
+            renderObjectsPass = new RenderObjectsPass(settings.Event, filter.PassNames,
                 filter.RenderQueueType, filter.LayerMask, settings.cameraSettings);
 
             renderObjectsPass.overrideMaterial = settings.overrideMaterial;

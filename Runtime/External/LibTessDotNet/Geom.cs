@@ -87,8 +87,6 @@ namespace UnityEngine.Rendering.Universal
             /// </summary>
             public static Real EdgeEval(MeshUtils.Vertex u, MeshUtils.Vertex v, MeshUtils.Vertex w)
             {
-                Debug.Assert(VertLeq(u, v) && VertLeq(v, w));
-
                 var gapL = v._s - u._s;
                 var gapR = w._s - v._s;
 
@@ -114,8 +112,6 @@ namespace UnityEngine.Rendering.Universal
             /// </summary>
             public static Real EdgeSign(MeshUtils.Vertex u, MeshUtils.Vertex v, MeshUtils.Vertex w)
             {
-                Debug.Assert(VertLeq(u, v) && VertLeq(v, w));
-
                 var gapL = v._s - u._s;
                 var gapR = w._s - v._s;
 
@@ -134,8 +130,6 @@ namespace UnityEngine.Rendering.Universal
 
             public static Real TransEval(MeshUtils.Vertex u, MeshUtils.Vertex v, MeshUtils.Vertex w)
             {
-                Debug.Assert(TransLeq(u, v) && TransLeq(v, w));
-
                 var gapL = v._t - u._t;
                 var gapR = w._t - v._t;
 
@@ -156,8 +150,6 @@ namespace UnityEngine.Rendering.Universal
 
             public static Real TransSign(MeshUtils.Vertex u, MeshUtils.Vertex v, MeshUtils.Vertex w)
             {
-                Debug.Assert(TransLeq(u, v) && TransLeq(v, w));
-
                 var gapL = v._t - u._t;
                 var gapR = w._t - v._t;
 

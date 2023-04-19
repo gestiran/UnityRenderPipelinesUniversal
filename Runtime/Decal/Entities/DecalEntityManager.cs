@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Mathematics;
-using UnityEngine.Assertions;
 using UnityEngine.Jobs;
 
 namespace UnityEngine.Rendering.Universal
@@ -72,7 +71,6 @@ namespace UnityEngine.Rendering.Universal
 
         public void DestroyDecalEntity(DecalEntity decalEntity)
         {
-            Assert.IsTrue(IsValid(decalEntity));
             m_FreeIndices.Enqueue(decalEntity.index);
 
             // Update version that everything that points to it will have outdated version
@@ -83,13 +81,11 @@ namespace UnityEngine.Rendering.Universal
 
         public DecalEntityItem GetItem(DecalEntity decalEntity)
         {
-            Assert.IsTrue(IsValid(decalEntity));
             return m_Entities[decalEntity.index];
         }
 
         public void UpdateIndex(DecalEntity decalEntity, int newArrayIndex)
         {
-            Assert.IsTrue(IsValid(decalEntity));
             var item = m_Entities[decalEntity.index];
             item.arrayIndex = newArrayIndex;
             item.version = decalEntity.version;
@@ -175,11 +171,7 @@ namespace UnityEngine.Rendering.Universal
         public List<DecalCulledChunk> culledChunks = new List<DecalCulledChunk>();
         public List<DecalDrawCallChunk> drawCallChunks = new List<DecalDrawCallChunk>();
         public int chunkCount;
-
-        private ProfilingSampler m_AddDecalSampler;
-        private ProfilingSampler m_ResizeChunks;
-        private ProfilingSampler m_SortChunks;
-
+        
         private DecalEntityIndexer m_DecalEntityIndexer = new DecalEntityIndexer();
         private Dictionary<Material, int> m_MaterialToChunkIndex = new Dictionary<Material, int>();
 
@@ -219,9 +211,7 @@ namespace UnityEngine.Rendering.Universal
 
         public DecalEntityManager()
         {
-            m_AddDecalSampler = new ProfilingSampler("DecalEntityManager.CreateDecalEntity");
-            m_ResizeChunks = new ProfilingSampler("DecalEntityManager.ResizeChunks");
-            m_SortChunks = new ProfilingSampler("DecalEntityManager.SortChunks");
+            
         }
 
         public bool IsValid(DecalEntity decalEntity)
@@ -234,47 +224,40 @@ namespace UnityEngine.Rendering.Universal
             var material = decalProjector.material;
             if (material == null)
                 material = errorMaterial;
+            
+            int chunkIndex = CreateChunkIndex(material);
+            int entityIndex = entityChunks[chunkIndex].count;
 
-            using (new ProfilingScope(null, m_AddDecalSampler))
-            {
-                int chunkIndex = CreateChunkIndex(material);
-                int entityIndex = entityChunks[chunkIndex].count;
+            DecalEntity entity = m_DecalEntityIndexer.CreateDecalEntity(entityIndex, chunkIndex);
 
-                DecalEntity entity = m_DecalEntityIndexer.CreateDecalEntity(entityIndex, chunkIndex);
+            DecalEntityChunk entityChunk = entityChunks[chunkIndex];
+            DecalCachedChunk cachedChunk = cachedChunks[chunkIndex];
+            DecalCulledChunk culledChunk = culledChunks[chunkIndex];
+            DecalDrawCallChunk drawCallChunk = drawCallChunks[chunkIndex];
 
-                DecalEntityChunk entityChunk = entityChunks[chunkIndex];
-                DecalCachedChunk cachedChunk = cachedChunks[chunkIndex];
-                DecalCulledChunk culledChunk = culledChunks[chunkIndex];
-                DecalDrawCallChunk drawCallChunk = drawCallChunks[chunkIndex];
+            // Make sure we have space to add new entity
+            if (entityChunks[chunkIndex].capacity == entityChunks[chunkIndex].count) {
+                int newCapacity = entityChunks[chunkIndex].capacity + entityChunks[chunkIndex].capacity;
+                newCapacity = math.max(8, newCapacity);
 
-                // Make sure we have space to add new entity
-                if (entityChunks[chunkIndex].capacity == entityChunks[chunkIndex].count)
-                {
-                    using (new ProfilingScope(null, m_ResizeChunks))
-                    {
-                        int newCapacity = entityChunks[chunkIndex].capacity + entityChunks[chunkIndex].capacity;
-                        newCapacity = math.max(8, newCapacity);
-
-                        entityChunk.SetCapacity(newCapacity);
-                        cachedChunk.SetCapacity(newCapacity);
-                        culledChunk.SetCapacity(newCapacity);
-                        drawCallChunk.SetCapacity(newCapacity);
-                    }
-                }
-
-                entityChunk.Push();
-                cachedChunk.Push();
-                culledChunk.Push();
-                drawCallChunk.Push();
-
-                entityChunk.decalProjectors[entityIndex] = decalProjector;
-                entityChunk.decalEntities[entityIndex] = entity;
-                entityChunk.transformAccessArray.Add(decalProjector.transform);
-
-                UpdateDecalEntityData(entity, decalProjector);
-
-                return entity;
+                entityChunk.SetCapacity(newCapacity);
+                cachedChunk.SetCapacity(newCapacity);
+                culledChunk.SetCapacity(newCapacity);
+                drawCallChunk.SetCapacity(newCapacity);
             }
+
+            entityChunk.Push();
+            cachedChunk.Push();
+            culledChunk.Push();
+            drawCallChunk.Push();
+
+            entityChunk.decalProjectors[entityIndex] = decalProjector;
+            entityChunk.decalEntities[entityIndex] = entity;
+            entityChunk.transformAccessArray.Add(decalProjector.transform);
+
+            UpdateDecalEntityData(entity, decalProjector);
+
+            return entity;
         }
 
         private int CreateChunkIndex(Material material)
@@ -382,106 +365,101 @@ namespace UnityEngine.Rendering.Universal
             drawCallChunk.RemoveAtSwapBack(arrayIndex);
         }
 
-        public void Update()
-        {
-            using (new ProfilingScope(null, m_SortChunks))
+        public void Update() {
+            for (int i = 0; i < chunkCount; ++i)
             {
-                for (int i = 0; i < chunkCount; ++i)
-                {
-                    if (entityChunks[i].material == null)
-                        entityChunks[i].material = errorMaterial;
-                }
-
-                // Combine chunks into single array
-                for (int i = 0; i < chunkCount; ++i)
-                {
-                    m_CombinedChunks[i] = new CombinedChunks()
-                    {
-                        entityChunk = entityChunks[i],
-                        cachedChunk = cachedChunks[i],
-                        culledChunk = culledChunks[i],
-                        drawCallChunk = drawCallChunks[i],
-                        previousChunkIndex = i,
-                        valid = entityChunks[i].count != 0,
-                    };
-                }
-
-
-                // Sort
-                m_CombinedChunks.Sort((a, b) =>
-                {
-                    if (a.valid && !b.valid)
-                        return -1;
-                    if (!a.valid && b.valid)
-                        return 1;
-
-                    if (a.cachedChunk.drawOrder < b.cachedChunk.drawOrder)
-                        return -1;
-                    if (a.cachedChunk.drawOrder > b.cachedChunk.drawOrder)
-                        return 1;
-                    return a.entityChunk.material.GetHashCode().CompareTo(b.entityChunk.material.GetHashCode());
-                });
-
-                // Early out if nothing changed
-                bool dirty = false;
-                for (int i = 0; i < chunkCount; ++i)
-                {
-                    if (m_CombinedChunks[i].previousChunkIndex != i || !m_CombinedChunks[i].valid)
-                    {
-                        dirty = true;
-                        break;
-                    }
-                }
-                if (!dirty)
-                    return;
-
-                // Update chunks
-                int count = 0;
-                m_MaterialToChunkIndex.Clear();
-                for (int i = 0; i < chunkCount; ++i)
-                {
-                    var combinedChunk = m_CombinedChunks[i];
-
-                    // Destroy invalid chunk
-                    if (!m_CombinedChunks[i].valid)
-                    {
-                        combinedChunk.entityChunk.currentJobHandle.Complete();
-                        combinedChunk.cachedChunk.currentJobHandle.Complete();
-                        combinedChunk.culledChunk.currentJobHandle.Complete();
-                        combinedChunk.drawCallChunk.currentJobHandle.Complete();
-
-                        combinedChunk.entityChunk.Dispose();
-                        combinedChunk.cachedChunk.Dispose();
-                        combinedChunk.culledChunk.Dispose();
-                        combinedChunk.drawCallChunk.Dispose();
-
-                        continue;
-                    }
-
-                    entityChunks[i] = combinedChunk.entityChunk;
-                    cachedChunks[i] = combinedChunk.cachedChunk;
-                    culledChunks[i] = combinedChunk.culledChunk;
-                    drawCallChunks[i] = combinedChunk.drawCallChunk;
-                    if (!m_MaterialToChunkIndex.ContainsKey(entityChunks[i].material))
-                        m_MaterialToChunkIndex.Add(entityChunks[i].material, i);
-                    m_CombinedChunkRemmap[combinedChunk.previousChunkIndex] = i;
-                    count++;
-                }
-
-                // In case some chunks where destroyed resize the arrays
-                if (chunkCount > count)
-                {
-                    entityChunks.RemoveRange(count, chunkCount - count);
-                    cachedChunks.RemoveRange(count, chunkCount - count);
-                    culledChunks.RemoveRange(count, chunkCount - count);
-                    drawCallChunks.RemoveRange(count, chunkCount - count);
-                    m_CombinedChunks.RemoveRange(count, chunkCount - count);
-                    chunkCount = count;
-                }
-
-                // Remap entities chunk index with new sorted ones
-                m_DecalEntityIndexer.RemapChunkIndices(m_CombinedChunkRemmap);
+                if (entityChunks[i].material == null)
+                    entityChunks[i].material = errorMaterial;
             }
+
+            for (int i = 0; i < chunkCount; ++i)
+            {
+                m_CombinedChunks[i] = new CombinedChunks()
+                                      {
+                                      entityChunk = entityChunks[i],
+                                      cachedChunk = cachedChunks[i],
+                                      culledChunk = culledChunks[i],
+                                      drawCallChunk = drawCallChunks[i],
+                                      previousChunkIndex = i,
+                                      valid = entityChunks[i].count != 0,
+                                      };
+            }
+
+
+            // Sort
+            m_CombinedChunks.Sort((a, b) =>
+                                  {
+                                      if (a.valid && !b.valid)
+                                          return -1;
+                                      if (!a.valid && b.valid)
+                                          return 1;
+
+                                      if (a.cachedChunk.drawOrder < b.cachedChunk.drawOrder)
+                                          return -1;
+                                      if (a.cachedChunk.drawOrder > b.cachedChunk.drawOrder)
+                                          return 1;
+                                      return a.entityChunk.material.GetHashCode().CompareTo(b.entityChunk.material.GetHashCode());
+                                  });
+
+            // Early out if nothing changed
+            bool dirty = false;
+            for (int i = 0; i < chunkCount; ++i)
+            {
+                if (m_CombinedChunks[i].previousChunkIndex != i || !m_CombinedChunks[i].valid)
+                {
+                    dirty = true;
+                    break;
+                }
+            }
+            if (!dirty)
+                return;
+
+            // Update chunks
+            int count = 0;
+            m_MaterialToChunkIndex.Clear();
+            for (int i = 0; i < chunkCount; ++i)
+            {
+                var combinedChunk = m_CombinedChunks[i];
+
+                // Destroy invalid chunk
+                if (!m_CombinedChunks[i].valid)
+                {
+                    combinedChunk.entityChunk.currentJobHandle.Complete();
+                    combinedChunk.cachedChunk.currentJobHandle.Complete();
+                    combinedChunk.culledChunk.currentJobHandle.Complete();
+                    combinedChunk.drawCallChunk.currentJobHandle.Complete();
+
+                    combinedChunk.entityChunk.Dispose();
+                    combinedChunk.cachedChunk.Dispose();
+                    combinedChunk.culledChunk.Dispose();
+                    combinedChunk.drawCallChunk.Dispose();
+
+                    continue;
+                }
+
+                entityChunks[i] = combinedChunk.entityChunk;
+                cachedChunks[i] = combinedChunk.cachedChunk;
+                culledChunks[i] = combinedChunk.culledChunk;
+                drawCallChunks[i] = combinedChunk.drawCallChunk;
+                if (!m_MaterialToChunkIndex.ContainsKey(entityChunks[i].material))
+                    m_MaterialToChunkIndex.Add(entityChunks[i].material, i);
+                m_CombinedChunkRemmap[combinedChunk.previousChunkIndex] = i;
+                count++;
+            }
+
+            // In case some chunks where destroyed resize the arrays
+            if (chunkCount > count)
+            {
+                entityChunks.RemoveRange(count, chunkCount - count);
+                cachedChunks.RemoveRange(count, chunkCount - count);
+                culledChunks.RemoveRange(count, chunkCount - count);
+                drawCallChunks.RemoveRange(count, chunkCount - count);
+                m_CombinedChunks.RemoveRange(count, chunkCount - count);
+                chunkCount = count;
+            }
+
+            // Remap entities chunk index with new sorted ones
+            m_DecalEntityIndexer.RemapChunkIndices(m_CombinedChunkRemmap);
         }
 
         public void Dispose()

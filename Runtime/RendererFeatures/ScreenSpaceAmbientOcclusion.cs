@@ -82,9 +82,6 @@ namespace UnityEngine.Rendering.Universal
         {
             if (!GetMaterial())
             {
-                Debug.LogErrorFormat(
-                    "{0}.AddRenderPasses(): Missing material. {1} render pass will not be added. Check for missing reference in the renderer resources.",
-                    GetType().Name, name);
                 return;
             }
 
@@ -136,7 +133,6 @@ namespace UnityEngine.Rendering.Universal
             private Vector4[] m_CameraYExtent = new Vector4[2];
             private Vector4[] m_CameraZExtent = new Vector4[2];
             private Matrix4x4[] m_CameraViewProjections = new Matrix4x4[2];
-            private ProfilingSampler m_ProfilingSampler = ProfilingSampler.Get(URPProfileId.SSAO);
             private ScriptableRenderer m_Renderer = null;
             private RenderTargetIdentifier m_SSAOTexture1Target = new RenderTargetIdentifier(s_SSAOTexture1ID, 0, CubemapFace.Unknown, -1);
             private RenderTargetIdentifier m_SSAOTexture2Target = new RenderTargetIdentifier(s_SSAOTexture2ID, 0, CubemapFace.Unknown, -1);
@@ -233,32 +229,24 @@ namespace UnityEngine.Rendering.Universal
                 );
                 m_Material.SetVector(s_SSAOParamsID, ssaoParams);
 
-#if ENABLE_VR && ENABLE_XR_MODULE
-                int eyeCount = renderingData.cameraData.xr.enabled && renderingData.cameraData.xr.singlePassEnabled ? 2 : 1;
-#else
-                int eyeCount = 1;
-#endif
-                for (int eyeIndex = 0; eyeIndex < eyeCount; eyeIndex++)
-                {
-                    Matrix4x4 view = renderingData.cameraData.GetViewMatrix(eyeIndex);
-                    Matrix4x4 proj = renderingData.cameraData.GetProjectionMatrix(eyeIndex);
-                    m_CameraViewProjections[eyeIndex] = proj * view;
+                Matrix4x4 view = renderingData.cameraData.GetViewMatrix(0);
+                Matrix4x4 proj = renderingData.cameraData.GetProjectionMatrix(0);
+                m_CameraViewProjections[0] = proj * view;
 
-                    // camera view space without translation, used by SSAO.hlsl ReconstructViewPos() to calculate view vector.
-                    Matrix4x4 cview = view;
-                    cview.SetColumn(3, new Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-                    Matrix4x4 cviewProj = proj * cview;
-                    Matrix4x4 cviewProjInv = cviewProj.inverse;
+                // camera view space without translation, used by SSAO.hlsl ReconstructViewPos() to calculate view vector.
+                Matrix4x4 cview = view;
+                cview.SetColumn(3, new Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+                Matrix4x4 cviewProj = proj * cview;
+                Matrix4x4 cviewProjInv = cviewProj.inverse;
 
-                    Vector4 topLeftCorner = cviewProjInv.MultiplyPoint(new Vector4(-1, 1, -1, 1));
-                    Vector4 topRightCorner = cviewProjInv.MultiplyPoint(new Vector4(1, 1, -1, 1));
-                    Vector4 bottomLeftCorner = cviewProjInv.MultiplyPoint(new Vector4(-1, -1, -1, 1));
-                    Vector4 farCentre = cviewProjInv.MultiplyPoint(new Vector4(0, 0, 1, 1));
-                    m_CameraTopLeftCorner[eyeIndex] = topLeftCorner;
-                    m_CameraXExtent[eyeIndex] = topRightCorner - topLeftCorner;
-                    m_CameraYExtent[eyeIndex] = bottomLeftCorner - topLeftCorner;
-                    m_CameraZExtent[eyeIndex] = farCentre;
-                }
+                Vector4 topLeftCorner = cviewProjInv.MultiplyPoint(new Vector4(-1, 1, -1, 1));
+                Vector4 topRightCorner = cviewProjInv.MultiplyPoint(new Vector4(1, 1, -1, 1));
+                Vector4 bottomLeftCorner = cviewProjInv.MultiplyPoint(new Vector4(-1, -1, -1, 1));
+                Vector4 farCentre = cviewProjInv.MultiplyPoint(new Vector4(0, 0, 1, 1));
+                m_CameraTopLeftCorner[0] = topLeftCorner;
+                m_CameraXExtent[0] = topRightCorner - topLeftCorner;
+                m_CameraYExtent[0] = bottomLeftCorner - topLeftCorner;
+                m_CameraZExtent[0] = farCentre;
 
                 m_Material.SetVector(s_ProjectionParams2ID, new Vector4(1.0f / renderingData.cameraData.camera.nearClipPlane, 0.0f, 0.0f, 0.0f));
                 m_Material.SetMatrixArray(s_CameraViewProjectionsID, m_CameraViewProjections);
@@ -342,57 +330,54 @@ namespace UnityEngine.Rendering.Universal
             {
                 if (m_Material == null)
                 {
-                    Debug.LogErrorFormat("{0}.Execute(): Missing material. ScreenSpaceAmbientOcclusion pass will not execute. Check for missing reference in the renderer resources.", GetType().Name);
                     return;
                 }
 
                 CommandBuffer cmd = CommandBufferPool.Get();
-                using (new ProfilingScope(cmd, m_ProfilingSampler))
+                
+                if (!m_CurrentSettings.AfterOpaque)
                 {
-                    if (!m_CurrentSettings.AfterOpaque)
-                    {
-                        CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.ScreenSpaceOcclusion, true);
-                    }
-                    PostProcessUtils.SetSourceSize(cmd, m_AOPassDescriptor);
+                    CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.ScreenSpaceOcclusion, true);
+                }
+                PostProcessUtils.SetSourceSize(cmd, m_AOPassDescriptor);
 
-                    Vector4 scaleBiasRt = new Vector4(-1, 1.0f, -1.0f, 1.0f);
-                    cmd.SetGlobalVector(Shader.PropertyToID("_ScaleBiasRt"), scaleBiasRt);
+                Vector4 scaleBiasRt = new Vector4(-1, 1.0f, -1.0f, 1.0f);
+                cmd.SetGlobalVector(Shader.PropertyToID("_ScaleBiasRt"), scaleBiasRt);
 
-                    // Execute the SSAO
-                    Render(cmd, m_SSAOTexture1Target, ShaderPasses.AO);
+                // Execute the SSAO
+                Render(cmd, m_SSAOTexture1Target, ShaderPasses.AO);
 
-                    // Execute the Blur Passes
-                    RenderAndSetBaseMap(cmd, m_SSAOTexture1Target, m_SSAOTexture2Target, ShaderPasses.BlurHorizontal);
+                // Execute the Blur Passes
+                RenderAndSetBaseMap(cmd, m_SSAOTexture1Target, m_SSAOTexture2Target, ShaderPasses.BlurHorizontal);
 
-                    PostProcessUtils.SetSourceSize(cmd, m_BlurPassesDescriptor);
-                    RenderAndSetBaseMap(cmd, m_SSAOTexture2Target, m_SSAOTexture3Target, ShaderPasses.BlurVertical);
-                    RenderAndSetBaseMap(cmd, m_SSAOTexture3Target, m_SSAOTextureFinalTarget, ShaderPasses.BlurFinal);
+                PostProcessUtils.SetSourceSize(cmd, m_BlurPassesDescriptor);
+                RenderAndSetBaseMap(cmd, m_SSAOTexture2Target, m_SSAOTexture3Target, ShaderPasses.BlurVertical);
+                RenderAndSetBaseMap(cmd, m_SSAOTexture3Target, m_SSAOTextureFinalTarget, ShaderPasses.BlurFinal);
 
-                    // Set the global SSAO texture and AO Params
-                    cmd.SetGlobalTexture(k_SSAOTextureName, m_SSAOTextureFinalTarget);
-                    cmd.SetGlobalVector(k_SSAOAmbientOcclusionParamName, new Vector4(0f, 0f, 0f, m_CurrentSettings.DirectLightingStrength));
+                // Set the global SSAO texture and AO Params
+                cmd.SetGlobalTexture(k_SSAOTextureName, m_SSAOTextureFinalTarget);
+                cmd.SetGlobalVector(k_SSAOAmbientOcclusionParamName, new Vector4(0f, 0f, 0f, m_CurrentSettings.DirectLightingStrength));
 
-                    // If true, SSAO pass is inserted after opaque pass and is expected to modulate lighting result now.
-                    if (m_CurrentSettings.AfterOpaque)
-                    {
-                        // SetRenderTarget has logic to flip projection matrix when rendering to render texture. Flip the uv to account for that case.
-                        CameraData cameraData = renderingData.cameraData;
-                        bool isCameraColorFinalTarget = (cameraData.cameraType == CameraType.Game && m_Renderer.cameraColorTarget == BuiltinRenderTextureType.CameraTarget && cameraData.camera.targetTexture == null);
-                        bool yflip = !isCameraColorFinalTarget;
-                        float flipSign = yflip ? -1.0f : 1.0f;
-                        scaleBiasRt = (flipSign < 0.0f)
+                // If true, SSAO pass is inserted after opaque pass and is expected to modulate lighting result now.
+                if (m_CurrentSettings.AfterOpaque)
+                {
+                    // SetRenderTarget has logic to flip projection matrix when rendering to render texture. Flip the uv to account for that case.
+                    CameraData cameraData = renderingData.cameraData;
+                    bool isCameraColorFinalTarget = (cameraData.cameraType == CameraType.Game && m_Renderer.cameraColorTarget == BuiltinRenderTextureType.CameraTarget && cameraData.camera.targetTexture == null);
+                    bool yflip = !isCameraColorFinalTarget;
+                    float flipSign = yflip ? -1.0f : 1.0f;
+                    scaleBiasRt = (flipSign < 0.0f)
                             ? new Vector4(flipSign, 1.0f, -1.0f, 1.0f)
                             : new Vector4(flipSign, 0.0f, 1.0f, 1.0f);
-                        cmd.SetGlobalVector(Shader.PropertyToID("_ScaleBiasRt"), scaleBiasRt);
+                    cmd.SetGlobalVector(Shader.PropertyToID("_ScaleBiasRt"), scaleBiasRt);
 
-                        // This implicitly also bind depth attachment. Explicitly binding m_Renderer.cameraDepthTarget does not work.
-                        cmd.SetRenderTarget(
+                    // This implicitly also bind depth attachment. Explicitly binding m_Renderer.cameraDepthTarget does not work.
+                    cmd.SetRenderTarget(
                             m_Renderer.cameraColorTarget,
                             RenderBufferLoadAction.Load,
                             RenderBufferStoreAction.Store
-                        );
-                        cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_Material, 0, (int)ShaderPasses.AfterOpaque);
-                    }
+                    );
+                    cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_Material, 0, (int)ShaderPasses.AfterOpaque);
                 }
 
                 context.ExecuteCommandBuffer(cmd);

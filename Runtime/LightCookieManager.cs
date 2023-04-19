@@ -94,9 +94,6 @@ namespace UnityEngine.Rendering.Universal
                     return;
                 }
 
-                Assertions.Assert.IsTrue((uint)start < data.Length);
-                Assertions.Assert.IsTrue((uint)end < data.Length); // end == inclusive
-
                 if (start < end)
                 {
                     int pivot = Partition<T>(data, start, end, compare);
@@ -150,9 +147,6 @@ namespace UnityEngine.Rendering.Universal
             // A non-allocating predicated sub-array insertion sort.
             static public void InsertionSort<T>(T[] data, int start, int end, Func<T, T, int> compare)
             {
-                Assertions.Assert.IsTrue((uint)start < data.Length);
-                Assertions.Assert.IsTrue((uint)end < data.Length);
-
                 for (int i = start + 1; i < end + 1; i++)
                 {
                     var iData = data[i];
@@ -209,7 +203,6 @@ namespace UnityEngine.Rendering.Universal
                 m_Data = src;
                 m_Start = srcStart;
                 m_Length = (srcLen < 0) ? src.Length : Math.Min(srcLen, src.Length);
-                Assertions.Assert.IsTrue(m_Start + m_Length <= capacity);
             }
 
             public T this[int index]
@@ -326,7 +319,6 @@ namespace UnityEngine.Rendering.Universal
             {
                 unsafe
                 {
-                    Debug.Assert(bitCapacity < 4096, "Bit string too long! It was truncated!");
                     int len = Math.Min(bitCapacity, 4096);
                     byte* buf = stackalloc byte[len];
                     for (int i = 0; i < len; i++)
@@ -521,10 +513,8 @@ namespace UnityEngine.Rendering.Universal
             return m_VisibleLightIndexToShaderDataIndex[visibleLightIndex];
         }
 
-        public void Setup(ScriptableRenderContext ctx, CommandBuffer cmd, ref LightData lightData)
+        public void Setup(CommandBuffer cmd, ref LightData lightData)
         {
-            using var profScope = new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.LightCookies));
-
             // Main light, 1 directional, bound directly
             bool isMainLightAvailable = lightData.mainLightIndex >= 0;
             if (isMainLightAvailable)
@@ -697,11 +687,8 @@ namespace UnityEngine.Rendering.Universal
                 if (!(lightType == LightType.Spot ||
                       lightType == LightType.Point))
                 {
-                    Debug.LogWarning($"Additional {lightType.ToString()} light called '{light.name}' has a light cookie which will not be visible.", light);
                     continue;
                 }
-
-                Assertions.Assert.IsTrue(i < ushort.MaxValue);
 
                 LightCookieMapping lp;
                 lp.visibleLightIndex = (ushort)i;
@@ -775,12 +762,10 @@ namespace UnityEngine.Rendering.Universal
                 Vector4 uvScaleOffset = Vector4.zero;
                 if (cookie.dimension == TextureDimension.Cube)
                 {
-                    Assertions.Assert.IsTrue(light.type == LightType.Point);
                     uvScaleOffset = FetchCube(cmd, cookie, cookieSizeDivisor);
                 }
                 else
                 {
-                    Assertions.Assert.IsTrue(light.type == LightType.Spot || light.type == LightType.Directional, "Light type needs 2D texture!");
                     uvScaleOffset = Fetch2D(cmd, cookie, cookieSizeDivisor);
                 }
 
@@ -789,8 +774,6 @@ namespace UnityEngine.Rendering.Universal
                 {
                     if (cookieSizeDivisor > k_MaxCookieSizeDivisor)
                     {
-                        Debug.LogWarning($"Light cookies atlas is extremely full! Some of the light cookies were discarded. Increase light cookie atlas space or reduce the amount of unique light cookies.");
-                        // Complete fail, return what we have.
                         return uvRectCount;
                     }
 
@@ -843,9 +826,6 @@ namespace UnityEngine.Rendering.Universal
 
         Vector4 Fetch2D(CommandBuffer cmd, Texture cookie, int cookieSizeDivisor = 1)
         {
-            Assertions.Assert.IsTrue(cookie != null);
-            Assertions.Assert.IsTrue(cookie.dimension == TextureDimension.Tex2D);
-
             Vector4 uvScaleOffset = Vector4.zero;
 
             var scaledWidth = Mathf.Max(cookie.width / cookieSizeDivisor, 4);
@@ -869,9 +849,6 @@ namespace UnityEngine.Rendering.Universal
 
         Vector4 FetchCube(CommandBuffer cmd, Texture cookie, int cookieSizeDivisor = 1)
         {
-            Assertions.Assert.IsTrue(cookie != null);
-            Assertions.Assert.IsTrue(cookie.dimension == TextureDimension.Cube);
-
             Vector4 uvScaleOffset = Vector4.zero;
 
             // Scale octahedral projection, so that cube -> oct2D pixel count match better.
@@ -938,9 +915,6 @@ namespace UnityEngine.Rendering.Universal
 
         void UploadAdditionalLights(CommandBuffer cmd, ref LightData lightData, ref WorkSlice<LightCookieMapping> validLightMappings, ref WorkSlice<Vector4> validUvRects)
         {
-            Assertions.Assert.IsTrue(m_AdditionalLightsCookieAtlas != null);
-            Assertions.Assert.IsTrue(m_AdditionalLightsCookieShaderData != null);
-
             cmd.SetGlobalTexture(ShaderProperty.additionalLightsCookieAtlasTexture, m_AdditionalLightsCookieAtlas.AtlasTexture);
             cmd.SetGlobalFloat(ShaderProperty.additionalLightsCookieAtlasTextureFormat, (float)GetLightCookieShaderFormat(m_AdditionalLightsCookieAtlas.AtlasTexture.rt.graphicsFormat));
 

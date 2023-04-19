@@ -18,28 +18,14 @@ namespace UnityEngine.Rendering.Universal
     {
         internal bool isInvalidated { get; set; }
 
-        /// <summary>
-        /// Class contains references to shader resources used by Rendering Debugger.
-        /// </summary>
         [Serializable, ReloadGroup]
         public sealed class DebugShaderResources
         {
-            /// <summary>
-            /// Debug shader used to output interpolated vertex attributes.
-            /// </summary>
             [Reload("Shaders/Debug/DebugReplacement.shader")]
             public Shader debugReplacementPS;
         }
 
-        /// <summary>
-        /// Container for shader resources used by Rendering Debugger.
-        /// </summary>
         public DebugShaderResources debugShaders;
-
-        /// <summary>
-        /// Creates the instance of the ScriptableRenderer.
-        /// </summary>
-        /// <returns>The instance of ScriptableRenderer</returns>
         protected abstract ScriptableRenderer Create();
 
         [SerializeField] internal List<ScriptableRendererFeature> m_RendererFeatures = new List<ScriptableRendererFeature>(10);
@@ -49,18 +35,11 @@ namespace UnityEngine.Rendering.Universal
 #endif
         [SerializeField] bool m_UseNativeRenderPass = false;
 
-        /// <summary>
-        /// List of additional render pass features for this renderer.
-        /// </summary>
         public List<ScriptableRendererFeature> rendererFeatures
         {
             get => m_RendererFeatures;
         }
 
-        /// <summary>
-        /// Use SetDirty when changing seeings in the ScriptableRendererData.
-        /// It will rebuild the render passes with the new data.
-        /// </summary>
         public new void SetDirty()
         {
             isInvalidated = true;
@@ -182,7 +161,6 @@ namespace UnityEngine.Rendering.Universal
             if (!m_RendererFeatures.Contains(null))
                 return true;
 
-            Debug.LogError($"{name} is missing RendererFeatures\nThis could be due to missing scripts or compile error.", this);
             return false;
         }
 

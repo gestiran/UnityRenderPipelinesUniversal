@@ -11,7 +11,6 @@ namespace UnityEngine.Rendering.Universal
         protected DecalEntityManager m_EntityManager;
         private Matrix4x4[] m_WorldToDecals;
         private Matrix4x4[] m_NormalToDecals;
-        private ProfilingSampler m_Sampler;
 
         public Material overrideMaterial { get; set; }
 
@@ -21,23 +20,17 @@ namespace UnityEngine.Rendering.Universal
 
             m_WorldToDecals = new Matrix4x4[250];
             m_NormalToDecals = new Matrix4x4[250];
-
-            m_Sampler = new ProfilingSampler(sampler);
         }
 
-        public void Execute(CommandBuffer cmd)
-        {
-            using (new ProfilingScope(cmd, m_Sampler))
+        public void Execute(CommandBuffer cmd) {
+            for (int i = 0; i < m_EntityManager.chunkCount; ++i)
             {
-                for (int i = 0; i < m_EntityManager.chunkCount; ++i)
-                {
-                    Execute(
+                Execute(
                         cmd,
                         m_EntityManager.entityChunks[i],
                         m_EntityManager.cachedChunks[i],
                         m_EntityManager.drawCallChunks[i],
                         m_EntityManager.entityChunks[i].count);
-                }
             }
         }
 
@@ -107,19 +100,15 @@ namespace UnityEngine.Rendering.Universal
             }
         }
 
-        public void Execute(in CameraData cameraData)
-        {
-            using (new ProfilingScope(null, m_Sampler))
+        public void Execute(in CameraData cameraData) {
+            for (int i = 0; i < m_EntityManager.chunkCount; ++i)
             {
-                for (int i = 0; i < m_EntityManager.chunkCount; ++i)
-                {
-                    Execute(
+                Execute(
                         cameraData,
                         m_EntityManager.entityChunks[i],
                         m_EntityManager.cachedChunks[i],
                         m_EntityManager.drawCallChunks[i],
                         m_EntityManager.entityChunks[i].count);
-                }
             }
         }
 

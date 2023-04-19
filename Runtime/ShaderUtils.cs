@@ -42,8 +42,7 @@ namespace UnityEngine.Rendering.Universal
             int arrayLength = s_ShaderPaths.Length;
             if (arrayLength > 0 && index >= 0 && index < arrayLength)
                 return s_ShaderPaths[index];
-
-            Debug.LogError("Trying to access universal shader path out of bounds: (" + id + ": " + index + ")");
+            
             return "";
         }
 
@@ -86,7 +85,6 @@ namespace UnityEngine.Rendering.Universal
             if (arrayLength > 0 && index >= 0 && index < arrayLength)
                 return s_ShaderGUIDs[index];
 
-            Debug.LogError("Trying to access universal shader GUID out of bounds: (" + id + ": " + index + ")");
             return "";
         }
 

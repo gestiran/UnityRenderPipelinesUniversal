@@ -32,9 +32,6 @@ namespace UnityEditor.Rendering.Universal
         public SerializedProperty volumeFrameworkUpdateMode { get; }
         public SerializedProperty renderPostProcessing { get; }
         public SerializedProperty antialiasingQuality { get; }
-#if ENABLE_VR && ENABLE_XR_MODULE
-        public SerializedProperty allowXRRendering { get; }
-#endif
 
         public (Camera camera, UniversalRenderPipelineSerializedCamera serializedCamera) this[int index]
         {
@@ -93,10 +90,6 @@ namespace UnityEditor.Rendering.Universal
             renderPostProcessing = serializedAdditionalDataObject.FindProperty("m_RenderPostProcessing");
             antialiasingQuality = serializedAdditionalDataObject.FindProperty("m_AntialiasingQuality");
             cameraType = serializedAdditionalDataObject.FindProperty("m_CameraType");
-
-#if ENABLE_VR && ENABLE_XR_MODULE
-            allowXRRendering = serializedAdditionalDataObject.FindProperty("m_AllowXRRendering");
-#endif
         }
 
         /// <summary>

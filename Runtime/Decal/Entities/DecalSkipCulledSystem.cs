@@ -2,30 +2,21 @@ using System;
 
 namespace UnityEngine.Rendering.Universal
 {
-    /// <summary>
-    /// System used for skipping culling. It is used with <see cref="Graphics.DrawMesh"/> as it already handles culling.
-    /// </summary>
     internal class DecalSkipCulledSystem
     {
         private DecalEntityManager m_EntityManager;
-        private ProfilingSampler m_Sampler;
         private Camera m_Camera;
 
 
         public DecalSkipCulledSystem(DecalEntityManager entityManager)
         {
             m_EntityManager = entityManager;
-            m_Sampler = new ProfilingSampler("DecalSkipCulledSystem.Execute");
         }
 
-        public void Execute(Camera camera)
-        {
-            using (new ProfilingScope(null, m_Sampler))
-            {
-                m_Camera = camera;
-                for (int i = 0; i < m_EntityManager.chunkCount; ++i)
-                    Execute(m_EntityManager.culledChunks[i], m_EntityManager.culledChunks[i].count);
-            }
+        public void Execute(Camera camera) {
+            m_Camera = camera;
+            for (int i = 0; i < m_EntityManager.chunkCount; ++i)
+                Execute(m_EntityManager.culledChunks[i], m_EntityManager.culledChunks[i].count);
         }
 
         private void Execute(DecalCulledChunk culledChunk, int count)

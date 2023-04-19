@@ -99,17 +99,11 @@ namespace UnityEngine.Rendering.Universal
 
         private class ScreenSpaceShadowsPass : ScriptableRenderPass
         {
-            // Profiling tag
-            private static string m_ProfilerTag = "ScreenSpaceShadows";
-            private static ProfilingSampler m_ProfilingSampler = new ProfilingSampler(m_ProfilerTag);
-
-            // Private Variables
             private Material m_Material;
             private ScreenSpaceShadowsSettings m_CurrentSettings;
             private RenderTextureDescriptor m_RenderTextureDescriptor;
             private RenderTargetHandle m_RenderTarget;
 
-            // Constants
             private const string k_SSShadowsTextureName = "_ScreenSpaceShadowmapTexture";
 
             internal ScreenSpaceShadowsPass()
@@ -156,31 +150,14 @@ namespace UnityEngine.Rendering.Universal
                 Camera camera = renderingData.cameraData.camera;
 
                 CommandBuffer cmd = CommandBufferPool.Get();
-                using (new ProfilingScope(cmd, m_ProfilingSampler))
-                {
-                    if (!renderingData.cameraData.xr.enabled)
-                    {
-                        cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
-                        cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_Material);
-                        cmd.SetViewProjectionMatrices(camera.worldToCameraMatrix, camera.projectionMatrix);
-                    }
-                    else
-                    {
-                        Vector4 scaleBias = new Vector4(1, 1, 0, 0);
-                        Vector4 scaleBiasRt = new Vector4(1, 1, 0, 0);
-                        cmd.SetGlobalVector(ShaderPropertyId.scaleBias, scaleBias);
-                        cmd.SetGlobalVector(ShaderPropertyId.scaleBiasRt, scaleBiasRt);
-                        // Avoid setting and restoring camera view and projection matrices when in stereo.
-                        RenderTargetIdentifier screenSpaceShadowTexture = m_RenderTarget.Identifier();
-                        cmd.SetRenderTarget(new RenderTargetIdentifier(screenSpaceShadowTexture, 0, CubemapFace.Unknown, -1),
-                            RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-                        cmd.DrawProcedural(Matrix4x4.identity, m_Material, 0, MeshTopology.Quads, 4, 1, null);
-                    }
+                
+                cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
+                cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_Material);
+                cmd.SetViewProjectionMatrices(camera.worldToCameraMatrix, camera.projectionMatrix);
 
-                    CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadows, false);
-                    CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowCascades, false);
-                    CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowScreen, true);
-                }
+                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadows, false);
+                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowCascades, false);
+                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowScreen, true);
 
                 context.ExecuteCommandBuffer(cmd);
                 CommandBufferPool.Release(cmd);
@@ -200,10 +177,6 @@ namespace UnityEngine.Rendering.Universal
 
         private class ScreenSpaceShadowsPostPass : ScriptableRenderPass
         {
-            // Profiling tag
-            private static string m_ProfilerTag = "ScreenSpaceShadows Post";
-            private static ProfilingSampler m_ProfilingSampler = new ProfilingSampler(m_ProfilerTag);
-
             public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
             {
                 ConfigureTarget(BuiltinRenderTextureType.CurrentActive);
@@ -212,21 +185,20 @@ namespace UnityEngine.Rendering.Universal
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
             {
                 CommandBuffer cmd = CommandBufferPool.Get();
-                using (new ProfilingScope(cmd, m_ProfilingSampler))
-                {
-                    ShadowData shadowData = renderingData.shadowData;
-                    int cascadesCount = shadowData.mainLightShadowCascadesCount;
-                    bool mainLightShadows = renderingData.shadowData.supportsMainLightShadows;
-                    bool receiveShadowsNoCascade = mainLightShadows && cascadesCount == 1;
-                    bool receiveShadowsCascades = mainLightShadows && cascadesCount > 1;
+                
+                ShadowData shadowData = renderingData.shadowData;
+                int cascadesCount = shadowData.mainLightShadowCascadesCount;
+                bool mainLightShadows = renderingData.shadowData.supportsMainLightShadows;
+                bool receiveShadowsNoCascade = mainLightShadows && cascadesCount == 1;
+                bool receiveShadowsCascades = mainLightShadows && cascadesCount > 1;
 
-                    // Before transparent object pass, force to disable screen space shadow of main light
-                    CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowScreen, false);
+                // Before transparent object pass, force to disable screen space shadow of main light
+                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowScreen, false);
 
-                    // then enable main light shadows with or without cascades
-                    CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadows, receiveShadowsNoCascade);
-                    CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowCascades, receiveShadowsCascades);
-                }
+                // then enable main light shadows with or without cascades
+                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadows, receiveShadowsNoCascade);
+                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.MainLightShadowCascades, receiveShadowsCascades);
+
                 context.ExecuteCommandBuffer(cmd);
                 CommandBufferPool.Release(cmd);
             }

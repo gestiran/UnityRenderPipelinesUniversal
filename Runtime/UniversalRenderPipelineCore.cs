@@ -99,10 +99,6 @@ namespace UnityEngine.Rendering.Universal
         /// <returns></returns>
         public Matrix4x4 GetViewMatrix(int viewIndex = 0)
         {
-#if ENABLE_VR && ENABLE_XR_MODULE
-            if (xr.enabled)
-                return xr.GetViewMatrix(viewIndex);
-#endif
             return m_ViewMatrix;
         }
 
@@ -112,10 +108,6 @@ namespace UnityEngine.Rendering.Universal
         /// <returns></returns>
         public Matrix4x4 GetProjectionMatrix(int viewIndex = 0)
         {
-#if ENABLE_VR && ENABLE_XR_MODULE
-            if (xr.enabled)
-                return xr.GetProjMatrix(viewIndex);
-#endif
             return m_ProjectionMatrix;
         }
 
@@ -156,18 +148,10 @@ namespace UnityEngine.Rendering.Universal
         /// </summary>
         public bool postProcessingRequiresDepthTexture;
 
-#if ENABLE_VR && ENABLE_XR_MODULE
-        public bool xrRendering;
-#endif
         internal bool requireSrgbConversion
         {
             get
             {
-#if ENABLE_VR && ENABLE_XR_MODULE
-                if (xr.enabled)
-                    return !xr.renderTargetDesc.sRGB && (QualitySettings.activeColorSpace == ColorSpace.Linear);
-#endif
-
                 return targetTexture == null && Display.main.requiresSrgbBlitToBackbuffer;
             }
         }
@@ -194,15 +178,10 @@ namespace UnityEngine.Rendering.Universal
         {
             // Users only have access to CameraData on URP rendering scope. The current renderer should never be null.
             var renderer = ScriptableRenderer.current;
-            Debug.Assert(renderer != null, "IsCameraProjectionMatrixFlipped is being called outside camera rendering scope.");
-
+            
             if (renderer != null)
             {
                 bool renderingToBackBufferTarget = renderer.cameraColorTarget == BuiltinRenderTextureType.CameraTarget;
-#if ENABLE_VR && ENABLE_XR_MODULE
-                if (xr.enabled)
-                    renderingToBackBufferTarget |= renderer.cameraColorTarget == xr.renderTarget && !xr.renderTargetIsRenderTexture;
-#endif
                 bool renderingToTexture = !renderingToBackBufferTarget || targetTexture != null;
                 return SystemInfo.graphicsUVStartsAtTop && renderingToTexture;
             }
@@ -211,8 +190,6 @@ namespace UnityEngine.Rendering.Universal
         }
 
         public SortingCriteria defaultOpaqueSortFlags;
-
-        internal XRPass xr;
 
         [Obsolete("Please use xr.enabled instead.")]
         public bool isStereoEnabled;
@@ -871,48 +848,5 @@ namespace UnityEngine.Rendering.Universal
                 lightOcclusionProbeChannel[light.bakingOutput.occlusionMaskChannel] = 1.0f;
             }
         }
-    }
-
-    internal enum URPProfileId
-    {
-        // CPU
-        UniversalRenderTotal,
-        UpdateVolumeFramework,
-        RenderCameraStack,
-
-        // GPU
-        AdditionalLightsShadow,
-        ColorGradingLUT,
-        CopyColor,
-        CopyDepth,
-        DepthNormalPrepass,
-        DepthPrepass,
-
-        // DrawObjectsPass
-        DrawOpaqueObjects,
-        DrawTransparentObjects,
-
-        // RenderObjectsPass
-        //RenderObjects,
-
-        LightCookies,
-
-        MainLightShadow,
-        ResolveShadows,
-        SSAO,
-
-        // PostProcessPass
-        StopNaNs,
-        SMAA,
-        GaussianDepthOfField,
-        BokehDepthOfField,
-        MotionBlur,
-        PaniniProjection,
-        UberPostProcess,
-        Bloom,
-        LensFlareDataDriven,
-        MotionVectors,
-
-        FinalBlit
     }
 }

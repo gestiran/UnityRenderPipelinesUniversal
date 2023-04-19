@@ -10,10 +10,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         Matrix4x4 m_viewProjectionMatrix;
         Matrix4x4 m_PreviousViewProjectionMatrix;
 
-#if ENABLE_VR && ENABLE_XR_MODULE
-        Matrix4x4[] m_ViewProjectionMatrixStereo = new Matrix4x4[2];
-        Matrix4x4[] m_PreviousViewProjectionMatrixStereo = new Matrix4x4[2];
-#endif
         #endregion
 
         #region Constructors
@@ -52,20 +48,6 @@ namespace UnityEngine.Rendering.Universal.Internal
             get => m_PreviousViewProjectionMatrix;
             set => m_PreviousViewProjectionMatrix = value;
         }
-
-#if ENABLE_VR && ENABLE_XR_MODULE
-        internal Matrix4x4[] previousViewProjectionMatrixStereo
-        {
-            get => m_PreviousViewProjectionMatrixStereo;
-            set => m_PreviousViewProjectionMatrixStereo = value;
-        }
-
-        internal Matrix4x4[] viewProjectionMatrixStereo
-        {
-            get => m_ViewProjectionMatrixStereo;
-            set => m_ViewProjectionMatrixStereo = value;
-        }
-#endif
     }
     #endregion
 }

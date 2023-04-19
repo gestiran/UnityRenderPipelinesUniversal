@@ -1,13 +1,5 @@
 using UnityEngine.Experimental.GlobalIllumination;
-using UnityEngine.Profiling;
 using Unity.Collections;
-
-// cleanup code
-// listMinDepth and maxDepth should be stored in a different uniform block?
-// Point lights stored as vec4
-// RelLightIndices should be stored in ushort instead of uint.
-// TODO use Unity.Mathematics
-// TODO Check if there is a bitarray structure (with dynamic size) available in Unity
 
 namespace UnityEngine.Rendering.Universal.Internal
 {
@@ -18,7 +10,6 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         public DeferredPass(RenderPassEvent evt, DeferredLights deferredLights)
         {
-            base.profilingSampler = new ProfilingSampler(nameof(DeferredPass));
             base.renderPassEvent = evt;
             m_DeferredLights = deferredLights;
         }

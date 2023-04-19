@@ -63,10 +63,6 @@ namespace UnityEditor.Rendering.Universal
         public SerializedProperty colorGradingMode { get; }
         public SerializedProperty colorGradingLutSize { get; }
         public SerializedProperty useFastSRGBLinearConversion { get; }
-
-#if ADAPTIVE_PERFORMANCE_2_0_0_OR_NEWER
-        public SerializedProperty useAdaptivePerformance { get; }
-#endif
         public UniversalRenderPipelineAsset asset { get; }
         public SerializedObject serializedObject { get; }
 
@@ -136,9 +132,6 @@ namespace UnityEditor.Rendering.Universal
 
             useFastSRGBLinearConversion = serializedObject.FindProperty("m_UseFastSRGBLinearConversion");
 
-#if ADAPTIVE_PERFORMANCE_2_0_0_OR_NEWER
-            useAdaptivePerformance = serializedObject.FindProperty("m_UseAdaptivePerformance");
-#endif
             string Key = "Universal_Shadow_Setting_Unit:UI_State";
             state = new EditorPrefBoolFlags<EditorUtils.Unit>(Key);
         }

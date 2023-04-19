@@ -191,9 +191,6 @@ namespace UnityEngine.Rendering.Universal.UTess
 
     }
 
-    /// <summary>
-    /// DebuggerTypeProxy for <see cref="ArraySlice{T}"/>
-    /// </summary>
     internal sealed class ArraySliceDebugView<T> where T : struct
     {
         ArraySlice<T> m_Slice;

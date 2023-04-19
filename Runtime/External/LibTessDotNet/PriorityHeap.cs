@@ -92,9 +92,7 @@ namespace UnityEngine.Rendering.Universal
                     {
                         ++child;
                     }
-
-                    Debug.Assert(child <= _max);
-
+                    
                     hChild = _nodes[child];
                     if (child > _size || _leq(_handles[hCurr]._key, _handles[hChild]._key))
                     {
@@ -177,14 +175,11 @@ namespace UnityEngine.Rendering.Universal
                     FloatUp(curr);
                 }
 
-                Debug.Assert(free != PQHandle.Invalid);
                 return new PQHandle { _handle = free };
             }
 
             public TValue ExtractMin()
             {
-                Debug.Assert(_initialized);
-
                 int hMin = _nodes[1];
                 TValue min = _handles[hMin]._key;
 
@@ -208,17 +203,12 @@ namespace UnityEngine.Rendering.Universal
 
             public TValue Minimum()
             {
-                Debug.Assert(_initialized);
                 return _handles[_nodes[1]]._key;
             }
 
             public void Remove(PQHandle handle)
             {
-                Debug.Assert(_initialized);
-
                 int hCurr = handle._handle;
-                Debug.Assert(hCurr >= 1 && hCurr <= _max && _handles[hCurr]._key != null);
-
                 int curr = _handles[hCurr]._node;
                 _nodes[curr] = _nodes[_size];
                 _handles[_nodes[curr]]._node = curr;

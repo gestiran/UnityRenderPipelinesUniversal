@@ -12,7 +12,6 @@ namespace UnityEngine.Rendering.Universal
     internal class DecalGBufferRenderPass : ScriptableRenderPass
     {
         private FilteringSettings m_FilteringSettings;
-        private ProfilingSampler m_ProfilingSampler;
         private List<ShaderTagId> m_ShaderTagIdList;
         private DecalDrawGBufferSystem m_DrawSystem;
         private DecalScreenSpaceSettings m_Settings;
@@ -25,7 +24,6 @@ namespace UnityEngine.Rendering.Universal
 
             m_DrawSystem = drawSystem;
             m_Settings = settings;
-            m_ProfilingSampler = new ProfilingSampler("Decal GBuffer Render");
             m_FilteringSettings = new FilteringSettings(RenderQueueRange.opaque, -1);
 
             m_ShaderTagIdList = new List<ShaderTagId>();
@@ -63,24 +61,22 @@ namespace UnityEngine.Rendering.Universal
             DrawingSettings drawingSettings = CreateDrawingSettings(m_ShaderTagIdList, ref renderingData, sortingCriteria);
 
             CommandBuffer cmd = CommandBufferPool.Get();
-            using (new ProfilingScope(cmd, m_ProfilingSampler))
-            {
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
 
-                NormalReconstruction.SetupProperties(cmd, renderingData.cameraData);
+            NormalReconstruction.SetupProperties(cmd, renderingData.cameraData);
 
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DecalNormalBlendLow, m_Settings.normalBlend == DecalNormalBlend.Low);
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DecalNormalBlendMedium, m_Settings.normalBlend == DecalNormalBlend.Medium);
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DecalNormalBlendHigh, m_Settings.normalBlend == DecalNormalBlend.High);
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DecalNormalBlendLow, m_Settings.normalBlend == DecalNormalBlend.Low);
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DecalNormalBlendMedium, m_Settings.normalBlend == DecalNormalBlend.Medium);
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DecalNormalBlendHigh, m_Settings.normalBlend == DecalNormalBlend.High);
 
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
 
-                m_DrawSystem?.Execute(cmd);
+            m_DrawSystem?.Execute(cmd);
 
-                context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref m_FilteringSettings);
-            }
+            context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref m_FilteringSettings);
+
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }

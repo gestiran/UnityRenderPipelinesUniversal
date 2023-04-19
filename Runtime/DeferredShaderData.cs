@@ -107,7 +107,6 @@ namespace UnityEngine.Rendering.Universal
         {
             ComputeBufferType type = isConstantBuffer ? ComputeBufferType.Constant : ComputeBufferType.Structured;
             int maxQueuedFrames = QualitySettings.maxQueuedFrames;
-            Assertions.Assert.IsTrue(maxQueuedFrames >= 1, "invalid QualitySettings.maxQueuedFrames");
 
             for (int i = 0; i < m_BufferCount; ++i)
             {

@@ -135,15 +135,6 @@ namespace UnityEngine.Rendering.Universal
                     }
                 }
 
-#if DEBUG
-                p = 0;
-                r = _size - 1;
-                for (i = p; i < r; ++i)
-                {
-                    Debug.Assert(_leq(_keys[_order[i + 1]], _keys[_order[i]]), "Wrong sort");
-                }
-#endif
-
                 _max = _size;
                 _initialized = true;
                 _heap.Init();
@@ -169,8 +160,6 @@ namespace UnityEngine.Rendering.Universal
 
             public TValue ExtractMin()
             {
-                Debug.Assert(_initialized);
-
                 if (_size == 0)
                 {
                     return _heap.ExtractMin();
@@ -193,8 +182,6 @@ namespace UnityEngine.Rendering.Universal
 
             public TValue Minimum()
             {
-                Debug.Assert(_initialized);
-
                 if (_size == 0)
                 {
                     return _heap.Minimum();
@@ -211,8 +198,6 @@ namespace UnityEngine.Rendering.Universal
 
             public void Remove(PQHandle handle)
             {
-                Debug.Assert(_initialized);
-
                 int curr = handle._handle;
                 if (curr >= 0)
                 {
@@ -220,8 +205,7 @@ namespace UnityEngine.Rendering.Universal
                     return;
                 }
                 curr = -(curr + 1);
-                Debug.Assert(curr < _max && _keys[curr] != null);
-
+                
                 _keys[curr] = null;
                 while (_size > 0 && _keys[_order[_size - 1]] == null)
                 {

@@ -9,10 +9,6 @@ using UnityEngine.Rendering.Universal;
 using UnityEngine.Rendering;
 using System.Runtime.CompilerServices;
 
-#if XR_MANAGEMENT_4_0_1_OR_NEWER
-using UnityEditor.XR.Management;
-#endif
-
 namespace UnityEditor.Rendering.Universal
 {
     [Flags]
@@ -344,30 +340,7 @@ namespace UnityEditor.Rendering.Universal
         {
             var globalSettings = UniversalRenderPipelineGlobalSettings.instance;
             bool stripDebugDisplayShaders = !Debug.isDebugBuild || (globalSettings == null || globalSettings.stripDebugVariants);
-
-#if XR_MANAGEMENT_4_0_1_OR_NEWER
-            var buildTargetSettings = XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(BuildTargetGroup.Standalone);
-            if (buildTargetSettings != null && buildTargetSettings.AssignedSettings != null && buildTargetSettings.AssignedSettings.activeLoaders.Count > 0)
-            {
-                stripDebugDisplayShaders = true;
-            }
-
-            // XRTODO: We need to figure out what's the proper way to detect HL target platform when building. For now, HL is the only XR platform available on WSA so we assume this case targets HL platform.
-            var wsaTargetSettings = XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(BuildTargetGroup.WSA);
-            if (wsaTargetSettings != null && wsaTargetSettings.AssignedSettings != null && wsaTargetSettings.AssignedSettings.activeLoaders.Count > 0)
-            {
-                // Due to the performance consideration, keep addtional light off variant to avoid extra ALU cost related to dummy additional light handling.
-                features |= ShaderFeatures.AdditionalLightsKeepOffVariants;
-            }
-
-            var questTargetSettings = XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(BuildTargetGroup.Android);
-            if (questTargetSettings != null && questTargetSettings.AssignedSettings != null && questTargetSettings.AssignedSettings.activeLoaders.Count > 0)
-            {
-                // Due to the performance consideration, keep addtional light off variant to avoid extra ALU cost related to dummy additional light handling.
-                features |= ShaderFeatures.AdditionalLightsKeepOffVariants;
-            }
-#endif
-
+            
             if (stripDebugDisplayShaders && compilerData.shaderKeywordSet.IsEnabled(m_DebugDisplay))
             {
                 return true;
@@ -1038,11 +1011,6 @@ namespace UnityEditor.Rendering.Universal
                     {
                         rendererClustered = universalRendererData.renderingMode == RenderingMode.Forward &&
                             universalRendererData.clusteredRendering;
-
-#if ENABLE_VR && ENABLE_XR_MODULE
-                        if (universalRendererData.xrSystemData != null)
-                            shaderFeatures |= ShaderFeatures.DrawProcedural;
-#endif
                     }
                 }
 

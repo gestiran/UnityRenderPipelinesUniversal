@@ -65,32 +65,5 @@ namespace UnityEngine.Rendering.Universal
             texture.Apply();
             return texture;
         }
-
-        //        private static Texture2D s_FalloffLookupTexture;
-        //#if UNITY_EDITOR
-        //        [MenuItem("Light2D Debugging/Write Light Texture")]
-        //        static public void WriteLightTexture()
-        //        {
-        //            var path = EditorUtility.SaveFilePanel("Save texture as PNG", "", "LightLookupTexture.exr", "png");
-
-        //            CreatePointLightLookupTexture();
-
-        //            byte[] imgData = s_PointLightLookupTexture.EncodeToEXR(Texture2D.EXRFlags.CompressRLE);
-        //            if (imgData != null)
-        //                File.WriteAllBytes(path, imgData);
-        //        }
-
-        //        [MenuItem("Light2D Debugging/Write Falloff Texture")]
-        //        static public void WriteCurveTexture()
-        //        {
-        //            var path = EditorUtility.SaveFilePanel("Save texture as PNG", "", "FalloffLookupTexture.png", "png");
-
-        //            CreateFalloffLookupTexture();
-
-        //            byte[] imgData = s_FalloffLookupTexture.EncodeToPNG();
-        //            if (imgData != null)
-        //                File.WriteAllBytes(path, imgData);
-        //        }
-        //#endif
     }
 }

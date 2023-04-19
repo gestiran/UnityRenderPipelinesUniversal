@@ -25,7 +25,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// </summary>
         public DepthNormalOnlyPass(RenderPassEvent evt, RenderQueueRange renderQueueRange, LayerMask layerMask)
         {
-            base.profilingSampler = new ProfilingSampler(nameof(DepthNormalOnlyPass));
             m_FilteringSettings = new FilteringSettings(renderQueueRange, layerMask);
             renderPassEvent = evt;
             useNativeRenderPass = false;
@@ -102,23 +101,20 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// <inheritdoc/>
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            // NOTE: Do NOT mix ProfilingScope with named CommandBuffers i.e. CommandBufferPool.Get("name").
-            // Currently there's an issue which results in mismatched markers.
             CommandBuffer cmd = CommandBufferPool.Get();
-            using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.DepthNormalPrepass)))
-            {
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
+            
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
 
-                var sortFlags = renderingData.cameraData.defaultOpaqueSortFlags;
-                var drawSettings = CreateDrawingSettings(this.shaderTagIds, ref renderingData, sortFlags);
-                drawSettings.perObjectData = PerObjectData.None;
+            var sortFlags = renderingData.cameraData.defaultOpaqueSortFlags;
+            var drawSettings = CreateDrawingSettings(this.shaderTagIds, ref renderingData, sortFlags);
+            drawSettings.perObjectData = PerObjectData.None;
 
-                ref CameraData cameraData = ref renderingData.cameraData;
-                Camera camera = cameraData.camera;
+            ref CameraData cameraData = ref renderingData.cameraData;
+            Camera camera = cameraData.camera;
 
-                context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref m_FilteringSettings);
-            }
+            context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref m_FilteringSettings);
+
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }

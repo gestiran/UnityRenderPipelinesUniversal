@@ -22,7 +22,6 @@ namespace UnityEngine.Rendering.Universal
         private FilteringSettings m_FilteringSettings;
         private List<ShaderTagId> m_ShaderTagIdList;
         private int m_DBufferCount;
-        private ProfilingSampler m_ProfilingSampler;
 
         internal DeferredLights deferredLights { get; set; }
         private bool isDeferred => deferredLights != null;
@@ -39,7 +38,6 @@ namespace UnityEngine.Rendering.Universal
             m_DrawSystem = drawSystem;
             m_Settings = settings;
             m_DBufferClear = dBufferClear;
-            m_ProfilingSampler = new ProfilingSampler("DBuffer Render");
             m_FilteringSettings = new FilteringSettings(RenderQueueRange.opaque, -1);
 
             m_ShaderTagIdList = new List<ShaderTagId>();
@@ -114,32 +112,31 @@ namespace UnityEngine.Rendering.Universal
             DrawingSettings drawingSettings = CreateDrawingSettings(m_ShaderTagIdList, ref renderingData, sortingCriteria);
 
             CommandBuffer cmd = CommandBufferPool.Get();
-            using (new ProfilingScope(cmd, m_ProfilingSampler))
+
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
+            if (isDeferred)
             {
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
-
-                if (isDeferred)
-                {
-                    cmd.SetGlobalTexture("_CameraNormalsTexture", deferredLights.GbufferAttachmentIdentifiers[deferredLights.GBufferNormalSmoothnessIndex]);
-                }
-
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DBufferMRT1, m_Settings.surfaceData == DecalSurfaceData.Albedo);
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DBufferMRT2, m_Settings.surfaceData == DecalSurfaceData.AlbedoNormal);
-                CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DBufferMRT3, m_Settings.surfaceData == DecalSurfaceData.AlbedoNormalMAOS);
-
-                // TODO: This should be replace with mrt clear once we support it
-                // Clear render targets
-                ClearDBuffers(cmd, renderingData.cameraData);
-
-                // Split here allows clear to be executed before DrawRenderers
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
-
-                m_DrawSystem.Execute(cmd);
-
-                context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref m_FilteringSettings);
+                cmd.SetGlobalTexture("_CameraNormalsTexture", deferredLights.GbufferAttachmentIdentifiers[deferredLights.GBufferNormalSmoothnessIndex]);
             }
+
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DBufferMRT1, m_Settings.surfaceData == DecalSurfaceData.Albedo);
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DBufferMRT2, m_Settings.surfaceData == DecalSurfaceData.AlbedoNormal);
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.DBufferMRT3, m_Settings.surfaceData == DecalSurfaceData.AlbedoNormalMAOS);
+
+            // TODO: This should be replace with mrt clear once we support it
+            // Clear render targets
+            ClearDBuffers(cmd, renderingData.cameraData);
+
+            // Split here allows clear to be executed before DrawRenderers
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
+            m_DrawSystem.Execute(cmd);
+
+            context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref m_FilteringSettings);
+
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }
@@ -153,16 +150,9 @@ namespace UnityEngine.Rendering.Universal
 
             Vector4 scaleBias = new Vector4(1, 1, 0, 0);
             cmd.SetGlobalVector(ShaderPropertyId.scaleBias, scaleBias);
-            if (cameraData.xr.enabled)
-            {
-                cmd.DrawProcedural(Matrix4x4.identity, m_DBufferClear, 0, MeshTopology.Quads, 4, 1, null);
-            }
-            else
-            {
-                cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity); // Prepare for manual blit
-                cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_DBufferClear, 0, 0);
-                cmd.SetViewProjectionMatrices(cameraData.camera.worldToCameraMatrix, cameraData.camera.projectionMatrix);
-            }
+            cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity); // Prepare for manual blit
+            cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_DBufferClear, 0, 0);
+            cmd.SetViewProjectionMatrices(cameraData.camera.worldToCameraMatrix, cameraData.camera.projectionMatrix);
 
             cmd.EndSample(clearSampleName);
         }

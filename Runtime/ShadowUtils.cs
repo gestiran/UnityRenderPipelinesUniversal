@@ -150,7 +150,6 @@ namespace UnityEngine.Rendering.Universal
         {
             if (shadowLightIndex < 0 || shadowLightIndex >= shadowData.bias.Count)
             {
-                Debug.LogWarning(string.Format("{0} is not a valid light index.", shadowLightIndex));
                 return Vector4.zero;
             }
 
@@ -187,7 +186,6 @@ namespace UnityEngine.Rendering.Universal
             }
             else
             {
-                Debug.LogWarning("Only point, spot and directional shadow casters are supported in universal pipeline");
                 frustumSize = 0.0f;
             }
 
@@ -196,19 +194,11 @@ namespace UnityEngine.Rendering.Universal
             float depthBias = -shadowData.bias[shadowLightIndex].x * texelSize;
             float normalBias = -shadowData.bias[shadowLightIndex].y * texelSize;
 
-            // The current implementation of NormalBias in Universal RP is the same as in Unity Built-In RP (i.e moving shadow caster vertices along normals when projecting them to the shadow map).
-            // This does not work well with Point Lights, which is why NormalBias value is hard-coded to 0.0 in Built-In RP (see value of unity_LightShadowBias.z in FrameDebugger, and native code that sets it: https://github.cds.internal.unity3d.com/unity/unity/blob/a9c916ba27984da43724ba18e70f51469e0c34f5/Runtime/Camera/Shadows.cpp#L1686 )
-            // We follow the same convention in Universal RP:
             if (shadowLight.lightType == LightType.Point)
                 normalBias = 0.0f;
 
             if (shadowData.supportsSoftShadows && shadowLight.light.shadows == LightShadows.Soft)
             {
-                // TODO: depth and normal bias assume sample is no more than 1 texel away from shadowmap
-                // This is not true with PCF. Ideally we need to do either
-                // cone base bias (based on distance to center sample)
-                // or receiver place bias based on derivatives.
-                // For now we scale it by the PCF kernel size of non-mobile platforms (5x5)
                 const float kernelRadius = 2.5f;
                 depthBias *= kernelRadius;
                 normalBias *= kernelRadius;

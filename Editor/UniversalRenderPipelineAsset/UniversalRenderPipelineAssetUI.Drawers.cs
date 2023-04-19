@@ -15,9 +15,6 @@ namespace UnityEditor.Rendering.Universal
             Lighting = 1 << 3,
             Shadows = 1 << 4,
             PostProcessing = 1 << 5,
-#if ADAPTIVE_PERFORMANCE_2_0_0_OR_NEWER
-            AdaptivePerformance = 1 << 6,
-#endif
         }
 
         enum ExpandableAdditional
@@ -106,9 +103,6 @@ namespace UnityEditor.Rendering.Universal
             CED.AdditionalPropertiesFoldoutGroup(Styles.lightingSettingsText, Expandable.Lighting, k_ExpandedState, ExpandableAdditional.Lighting, k_AdditionalPropertiesState, DrawLighting, DrawLightingAdditional),
             CED.AdditionalPropertiesFoldoutGroup(Styles.shadowSettingsText, Expandable.Shadows, k_ExpandedState, ExpandableAdditional.Shadows, k_AdditionalPropertiesState, DrawShadows, DrawShadowsAdditional),
             CED.AdditionalPropertiesFoldoutGroup(Styles.postProcessingSettingsText, Expandable.PostProcessing, k_ExpandedState, ExpandableAdditional.PostProcessing, k_AdditionalPropertiesState, DrawPostProcessing, DrawPostProcessingAdditional)
-#if ADAPTIVE_PERFORMANCE_2_0_0_OR_NEWER
-            , CED.FoldoutGroup(Styles.adaptivePerformanceText, Expandable.AdaptivePerformance, k_ExpandedState, CED.Group(DrawAdaptivePerformance))
-#endif
         );
 
         static void DrawRendering(SerializedUniversalRenderPipelineAsset serialized, Editor ownerEditor)
@@ -483,12 +477,5 @@ namespace UnityEditor.Rendering.Universal
         {
             CoreEditorUtils.DrawPopup(Styles.volumeFrameworkUpdateMode, serialized.volumeFrameworkUpdateModeProp, Styles.volumeFrameworkUpdateOptions);
         }
-
-#if ADAPTIVE_PERFORMANCE_2_0_0_OR_NEWER
-        static void DrawAdaptivePerformance(SerializedUniversalRenderPipelineAsset serialized, Editor ownerEditor)
-        {
-            EditorGUILayout.PropertyField(serialized.useAdaptivePerformance, Styles.useAdaptivePerformance);
-        }
-#endif
     }
 }

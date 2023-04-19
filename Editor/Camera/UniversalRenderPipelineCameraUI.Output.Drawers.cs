@@ -26,9 +26,6 @@ namespace UnityEditor.Rendering.Universal
                             DrawerOutputMultiDisplay
                         )
                         ),
-#if ENABLE_VR && ENABLE_XR_MODULE
-                    CED.Group(DrawerOutputXRRendering),
-#endif
                     CED.Group(
                         DrawerOutputNormalizedViewPort
                         ),
@@ -168,26 +165,7 @@ namespace UnityEditor.Rendering.Universal
                     }
                 }
             }
-
-#if ENABLE_VR && ENABLE_XR_MODULE
-            static void DrawerOutputXRRendering(UniversalRenderPipelineSerializedCamera p, Editor owner)
-            {
-                Rect controlRect = EditorGUILayout.GetControlRect(true);
-                EditorGUI.BeginProperty(controlRect, Styles.xrTargetEye, p.allowXRRendering);
-                {
-                    using (var checkScope = new EditorGUI.ChangeCheckScope())
-                    {
-                        int selectedValue = !p.allowXRRendering.boolValue ? 0 : 1;
-                        bool allowXRRendering = EditorGUI.IntPopup(controlRect, Styles.xrTargetEye, selectedValue, Styles.xrTargetEyeOptions, Styles.xrTargetEyeValues) == 1;
-                        if (checkScope.changed)
-                            p.allowXRRendering.boolValue = allowXRRendering;
-                    }
-                }
-                EditorGUI.EndProperty();
-            }
-
-#endif
-
+            
             static void DrawerOutputHDR(UniversalRenderPipelineSerializedCamera p, Editor owner)
             {
                 Rect controlRect = EditorGUILayout.GetControlRect(true);

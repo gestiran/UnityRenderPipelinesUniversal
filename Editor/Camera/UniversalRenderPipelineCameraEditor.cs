@@ -416,17 +416,6 @@ namespace UnityEditor.Rendering.Universal
                 isChanged = true;
             }
 
-#if ENABLE_VR && ENABLE_XR_MODULE
-            // Force same target display
-            int selectedValue = !m_SerializedCamera.allowXRRendering.boolValue ? 0 : 1;
-            int overlayCameraSelectedValue = !serializedCamera.allowXRRendering.boolValue ? 0 : 1;
-            if (overlayCameraSelectedValue != selectedValue)
-            {
-                serializedCamera.allowXRRendering.boolValue = selectedValue == 1;
-                isChanged = true;
-            }
-#endif
-
             if (isChanged)
             {
                 EditorUtility.SetDirty(cam);
@@ -467,15 +456,6 @@ namespace UnityEditor.Rendering.Universal
             int targetDisplay = settings.targetDisplay.intValue;
             if (cam.targetDisplay != targetDisplay)
                 return true;
-
-#if ENABLE_VR && ENABLE_XR_MODULE
-            // Force same target display
-            int selectedValue = !m_SerializedCamera.allowXRRendering.boolValue ? 0 : 1;
-            int overlayCameraSelectedValue = !serializedCamera.allowXRRendering.boolValue ? 0 : 1;
-            if (overlayCameraSelectedValue != selectedValue)
-                return true;
-#endif
-
             return false;
         }
 

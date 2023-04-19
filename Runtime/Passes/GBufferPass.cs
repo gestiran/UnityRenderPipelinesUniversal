@@ -1,6 +1,4 @@
-using UnityEngine.Experimental.GlobalIllumination;
 using UnityEngine.Experimental.Rendering;
-using UnityEngine.Profiling;
 using Unity.Collections;
 
 namespace UnityEngine.Rendering.Universal.Internal
@@ -15,8 +13,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         static ShaderTagId s_ShaderTagUniversalGBuffer = new ShaderTagId("UniversalGBuffer");
         static ShaderTagId s_ShaderTagUniversalMaterialType = new ShaderTagId("UniversalMaterialType");
 
-        ProfilingSampler m_ProfilingSampler = new ProfilingSampler("Render GBuffer");
-
         DeferredLights m_DeferredLights;
 
         ShaderTagId[] m_ShaderTagValues;
@@ -27,7 +23,6 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         public GBufferPass(RenderPassEvent evt, RenderQueueRange renderQueueRange, LayerMask layerMask, StencilState stencilState, int stencilReference, DeferredLights deferredLights)
         {
-            base.profilingSampler = new ProfilingSampler(nameof(GBufferPass));
             base.renderPassEvent = evt;
 
             m_DeferredLights = deferredLights;
@@ -95,41 +90,36 @@ namespace UnityEngine.Rendering.Universal.Internal
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             CommandBuffer gbufferCommands = CommandBufferPool.Get();
-            using (new ProfilingScope(gbufferCommands, m_ProfilingSampler))
+
+            context.ExecuteCommandBuffer(gbufferCommands);
+            gbufferCommands.Clear();
+
+            if (m_DeferredLights.IsOverlay)
             {
+                m_DeferredLights.ClearStencilPartial(gbufferCommands);
                 context.ExecuteCommandBuffer(gbufferCommands);
                 gbufferCommands.Clear();
-
-                // User can stack several scriptable renderers during rendering but deferred renderer should only lit pixels added by this gbuffer pass.
-                // If we detect we are in such case (camera is in overlay mode), we clear the highest bits of stencil we have control of and use them to
-                // mark what pixel to shade during deferred pass. Gbuffer will always mark pixels using their material types.
-                if (m_DeferredLights.IsOverlay)
-                {
-                    m_DeferredLights.ClearStencilPartial(gbufferCommands);
-                    context.ExecuteCommandBuffer(gbufferCommands);
-                    gbufferCommands.Clear();
-                }
-
-                ref CameraData cameraData = ref renderingData.cameraData;
-                Camera camera = cameraData.camera;
-                ShaderTagId lightModeTag = s_ShaderTagUniversalGBuffer;
-                DrawingSettings drawingSettings = CreateDrawingSettings(lightModeTag, ref renderingData, renderingData.cameraData.defaultOpaqueSortFlags);
-                ShaderTagId universalMaterialTypeTag = s_ShaderTagUniversalMaterialType;
-
-                NativeArray<ShaderTagId> tagValues = new NativeArray<ShaderTagId>(m_ShaderTagValues, Allocator.Temp);
-                NativeArray<RenderStateBlock> stateBlocks = new NativeArray<RenderStateBlock>(m_RenderStateBlocks, Allocator.Temp);
-
-                context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref m_FilteringSettings, universalMaterialTypeTag, false, tagValues, stateBlocks);
-
-                tagValues.Dispose();
-                stateBlocks.Dispose();
-
-                // Render objects that did not match any shader pass with error shader
-                RenderingUtils.RenderObjectsWithError(context, ref renderingData.cullResults, camera, m_FilteringSettings, SortingCriteria.None);
-
-                // If any sub-system needs camera normal texture, make it available.
-                gbufferCommands.SetGlobalTexture(s_CameraNormalsTextureID, m_DeferredLights.GbufferAttachmentIdentifiers[m_DeferredLights.GBufferNormalSmoothnessIndex]);
             }
+
+            ref CameraData cameraData = ref renderingData.cameraData;
+            Camera camera = cameraData.camera;
+            ShaderTagId lightModeTag = s_ShaderTagUniversalGBuffer;
+            DrawingSettings drawingSettings = CreateDrawingSettings(lightModeTag, ref renderingData, renderingData.cameraData.defaultOpaqueSortFlags);
+            ShaderTagId universalMaterialTypeTag = s_ShaderTagUniversalMaterialType;
+
+            NativeArray<ShaderTagId> tagValues = new NativeArray<ShaderTagId>(m_ShaderTagValues, Allocator.Temp);
+            NativeArray<RenderStateBlock> stateBlocks = new NativeArray<RenderStateBlock>(m_RenderStateBlocks, Allocator.Temp);
+
+            context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref m_FilteringSettings, universalMaterialTypeTag, false, tagValues, stateBlocks);
+
+            tagValues.Dispose();
+            stateBlocks.Dispose();
+
+            // Render objects that did not match any shader pass with error shader
+            RenderingUtils.RenderObjectsWithError(context, ref renderingData.cullResults, camera, m_FilteringSettings, SortingCriteria.None);
+
+            // If any sub-system needs camera normal texture, make it available.
+            gbufferCommands.SetGlobalTexture(s_CameraNormalsTextureID, m_DeferredLights.GbufferAttachmentIdentifiers[m_DeferredLights.GBufferNormalSmoothnessIndex]);
 
             context.ExecuteCommandBuffer(gbufferCommands);
             CommandBufferPool.Release(gbufferCommands);

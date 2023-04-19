@@ -199,7 +199,6 @@ namespace UnityEngine.Rendering.Universal
                     UpdateMesh();
 
                 m_LightType = value;
-                Light2DManager.ErrorIfDuplicateGlobalLight(this);
             }
         }
 

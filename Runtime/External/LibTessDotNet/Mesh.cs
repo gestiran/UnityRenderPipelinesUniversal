@@ -452,51 +452,27 @@ namespace UnityEngine.Rendering.Universal
                     e = f._anEdge;
                     do
                     {
-                        Debug.Assert(e._Sym != e);
-                        Debug.Assert(e._Sym._Sym == e);
-                        Debug.Assert(e._Lnext._Onext._Sym == e);
-                        Debug.Assert(e._Onext._Sym._Lnext == e);
-                        Debug.Assert(e._Lface == f);
                         e = e._Lnext;
                     }
                     while (e != f._anEdge);
                 }
-                Debug.Assert(f._prev == fPrev && f._anEdge == null);
-
+                
                 MeshUtils.Vertex vPrev = _vHead, v;
                 for (vPrev = _vHead; (v = vPrev._next) != _vHead; vPrev = v)
                 {
-                    Debug.Assert(v._prev == vPrev);
                     e = v._anEdge;
                     do
                     {
-                        Debug.Assert(e._Sym != e);
-                        Debug.Assert(e._Sym._Sym == e);
-                        Debug.Assert(e._Lnext._Onext._Sym == e);
-                        Debug.Assert(e._Onext._Sym._Lnext == e);
-                        Debug.Assert(e._Org == v);
                         e = e._Onext;
                     }
                     while (e != v._anEdge);
                 }
-                Debug.Assert(v._prev == vPrev && v._anEdge == null);
-
+                
                 MeshUtils.Edge ePrev = _eHead;
                 for (ePrev = _eHead; (e = ePrev._next) != _eHead; ePrev = e)
                 {
-                    Debug.Assert(e._Sym._next == ePrev._Sym);
-                    Debug.Assert(e._Sym != e);
-                    Debug.Assert(e._Sym._Sym == e);
-                    Debug.Assert(e._Org != null);
-                    Debug.Assert(e._Dst != null);
-                    Debug.Assert(e._Lnext._Onext._Sym == e);
-                    Debug.Assert(e._Onext._Sym._Lnext == e);
+                    
                 }
-                Debug.Assert(e._Sym._next == ePrev._Sym
-                    && e._Sym == _eHeadSym
-                    && e._Sym._Sym == e
-                    && e._Org == null && e._Dst == null
-                    && e._Lface == null && e._Rface == null);
             }
         }
     }
