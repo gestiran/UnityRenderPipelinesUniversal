@@ -60,9 +60,8 @@ namespace UnityEngine.Rendering.Universal
     internal class DecalCreateDrawCallSystem
     {
         private DecalEntityManager m_EntityManager;
-        private ProfilingSampler m_Sampler;
         private float m_MaxDrawDistance;
-
+        
         /// <summary>
         /// Provides acces to the maximum draw distance.
         /// </summary>
@@ -75,16 +74,12 @@ namespace UnityEngine.Rendering.Universal
         public DecalCreateDrawCallSystem(DecalEntityManager entityManager, float maxDrawDistance)
         {
             m_EntityManager = entityManager;
-            m_Sampler = new ProfilingSampler("DecalCreateDrawCallSystem.Execute");
             m_MaxDrawDistance = maxDrawDistance;
         }
 
-        public void Execute()
-        {
-            using (new ProfilingScope(null, m_Sampler))
-            {
-                for (int i = 0; i < m_EntityManager.chunkCount; ++i)
-                    Execute(m_EntityManager.cachedChunks[i], m_EntityManager.culledChunks[i], m_EntityManager.drawCallChunks[i], m_EntityManager.cachedChunks[i].count);
+        public void Execute() {
+            for (int i = 0; i < m_EntityManager.chunkCount; ++i) {
+                Execute(m_EntityManager.cachedChunks[i], m_EntityManager.culledChunks[i], m_EntityManager.drawCallChunks[i], m_EntityManager.cachedChunks[i].count);
             }
         }
 

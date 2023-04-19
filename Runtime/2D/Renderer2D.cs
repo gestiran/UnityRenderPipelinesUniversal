@@ -95,7 +95,9 @@ namespace UnityEngine.Rendering.Universal {
                 m_CreateColorTexture = forceCreateColorTexture ||
                                        cameraData.postProcessEnabled ||
                                        cameraData.isHdrEnabled ||
+                                   #if UNITY_EDITOR
                                        cameraData.isSceneViewCamera ||
+                                   #endif
                                        !cameraData.isDefaultViewport ||
                                        cameraData.requireSrgbConversion ||
                                        !cameraData.resolveFinalTarget ||

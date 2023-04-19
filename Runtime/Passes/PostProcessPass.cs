@@ -22,7 +22,7 @@ namespace UnityEngine.Rendering.Universal.Internal {
         RenderTargetHandle m_Destination;
         RenderTargetHandle m_Depth;
         RenderTargetHandle m_InternalLut;
-        
+
         MaterialLibrary m_Materials;
         PostProcessData m_Data;
 
@@ -223,10 +223,9 @@ namespace UnityEngine.Rendering.Universal.Internal {
                 context.ExecuteCommandBuffer(cmd);
                 CommandBufferPool.Release(cmd);
             } else if (CanRunOnTile()) {
-                
             } else {
                 var cmd = CommandBufferPool.Get();
-                
+
                 Render(cmd, ref renderingData);
 
                 context.ExecuteCommandBuffer(cmd);
@@ -265,17 +264,34 @@ namespace UnityEngine.Rendering.Universal.Internal {
         void Render(CommandBuffer cmd, ref RenderingData renderingData) {
             ref CameraData cameraData = ref renderingData.cameraData;
             ref ScriptableRenderer renderer = ref cameraData.renderer;
-            bool isSceneViewCamera = cameraData.isSceneViewCamera;
 
-            //Check amount of swaps we have to do
-            //We blit back and forth without msaa untill the last blit.
+        #if UNITY_EDITOR
+            bool isSceneViewCamera = cameraData.isSceneViewCamera;
+        #endif
+
             bool useStopNan = cameraData.isStopNaNEnabled && m_Materials.stopNaN != null;
             bool useSubPixeMorpAA = cameraData.antialiasing == AntialiasingMode.SubpixelMorphologicalAntiAliasing && SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
             var dofMaterial = m_DepthOfField.mode.value == DepthOfFieldMode.Gaussian ? m_Materials.gaussianDepthOfField : m_Materials.bokehDepthOfField;
-            bool useDepthOfField = m_DepthOfField.IsActive() && !isSceneViewCamera && dofMaterial != null;
+            bool useDepthOfField = m_DepthOfField.IsActive() &&
+                               #if UNITY_EDITOR
+                                   !isSceneViewCamera &&
+                               #endif
+                                   dofMaterial != null;
+
             bool useLensFlare = !LensFlareCommonSRP.Instance.IsEmpty();
-            bool useMotionBlur = m_MotionBlur.IsActive() && !isSceneViewCamera;
-            bool usePaniniProjection = m_PaniniProjection.IsActive() && !isSceneViewCamera;
+            bool useMotionBlur = m_MotionBlur.IsActive()
+                             #if UNITY_EDITOR
+                               &&
+                                 !isSceneViewCamera
+                #endif
+                    ;
+
+            bool usePaniniProjection = m_PaniniProjection.IsActive()
+                                   #if UNITY_EDITOR
+                                     &&
+                                       !isSceneViewCamera
+                #endif
+                    ;
 
             int amountOfPassesRemaining = (useStopNan ? 1 : 0) +
                                           (useSubPixeMorpAA ? 1 : 0) +
@@ -380,10 +396,10 @@ namespace UnityEngine.Rendering.Universal.Internal {
                     paniniDistance = 1.0f;
                     paniniCropToFit = 1.0f;
                 }
-                
+
                 DoLensFlareDatadriven(cameraData.camera, cmd, GetSource(), usePanini, paniniDistance, paniniCropToFit);
             }
-            
+
             m_Materials.uber.shaderKeywords = null;
             bool bloomActive = m_Bloom.IsActive();
 
@@ -391,7 +407,12 @@ namespace UnityEngine.Rendering.Universal.Internal {
                 SetupBloom(cmd, GetSource(), m_Materials.uber);
             }
 
-            SetupLensDistortion(m_Materials.uber, isSceneViewCamera);
+            SetupLensDistortion(m_Materials.uber
+                #if UNITY_EDITOR
+                  , isSceneViewCamera
+                #endif
+            );
+
             SetupChromaticAberration(m_Materials.uber);
             SetupVignette(m_Materials.uber);
             SetupColorGrading(cmd, ref renderingData, m_Materials.uber);
@@ -421,8 +442,7 @@ namespace UnityEngine.Rendering.Universal.Internal {
             // Note: We rendering to "camera target" we need to get the cameraData.targetTexture as this will get the targetTexture of the camera stack.
             // Overlay cameras need to output to the target described in the base camera while doing camera stack.
             RenderTargetHandle cameraTargetHandle = RenderTargetHandle.GetCameraTarget();
-            RenderTargetIdentifier cameraTarget = (cameraData.targetTexture != null) ? new RenderTargetIdentifier(cameraData.targetTexture)
-                    : cameraTargetHandle.Identifier();
+            RenderTargetIdentifier cameraTarget = (cameraData.targetTexture != null) ? new RenderTargetIdentifier(cameraData.targetTexture) : cameraTargetHandle.Identifier();
 
             // With camera stacking we not always resolve post to final screen as we might run post-processing in the middle of the stack.
             if (m_UseSwapBuffer) {
@@ -447,8 +467,7 @@ namespace UnityEngine.Rendering.Universal.Internal {
             // in the pipeline to avoid this extra blit.
             if (!m_ResolveToScreen && !m_UseSwapBuffer) {
                 cmd.SetGlobalTexture(ShaderPropertyId.sourceTex, cameraTarget);
-                cmd.SetRenderTarget(m_Source, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, RenderBufferLoadAction.DontCare,
-                        RenderBufferStoreAction.DontCare);
+                cmd.SetRenderTarget(m_Source, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.DontCare);
 
                 cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_BlitMaterial);
             }
@@ -1024,7 +1043,12 @@ namespace UnityEngine.Rendering.Universal.Internal {
 
     #region Lens Distortion
 
-        void SetupLensDistortion(Material material, bool isSceneView) {
+        void SetupLensDistortion(Material material
+                             #if UNITY_EDITOR
+                               , bool isSceneView
+    #endif
+
+        ) {
             float amount = 1.6f * Mathf.Max(Mathf.Abs(m_LensDistortion.intensity.value * 100f), 1f);
             float theta = Mathf.Deg2Rad * Mathf.Min(160f, amount);
             float sigma = 2f * Mathf.Tan(theta * 0.5f);
@@ -1035,7 +1059,12 @@ namespace UnityEngine.Rendering.Universal.Internal {
             material.SetVector(ShaderConstants._Distortion_Params1, p1);
             material.SetVector(ShaderConstants._Distortion_Params2, p2);
 
-            if (m_LensDistortion.IsActive() && !isSceneView)
+            if (m_LensDistortion.IsActive()
+            #if UNITY_EDITOR
+              &&
+                !isSceneView
+            #endif
+               )
                 material.EnableKeyword(ShaderKeywordStrings.Distortion);
         }
 

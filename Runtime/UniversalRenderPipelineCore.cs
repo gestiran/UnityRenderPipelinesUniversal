@@ -156,11 +156,13 @@ namespace UnityEngine.Rendering.Universal
             }
         }
 
+    #if UNITY_EDITOR
         /// <summary>
         /// True if the camera rendering is for the scene window in the editor
         /// </summary>
         public bool isSceneViewCamera => cameraType == CameraType.SceneView;
-
+    #endif
+        
         /// <summary>
         /// True if the camera rendering is for the preview window in the editor
         /// </summary>

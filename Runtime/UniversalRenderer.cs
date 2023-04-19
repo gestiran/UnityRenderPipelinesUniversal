@@ -147,7 +147,7 @@ namespace UnityEngine.Rendering.Universal {
         internal DeferredLights deferredLights {
             get => m_DeferredLights;
         }
-        
+
         public UniversalRenderer(UniversalRendererData data) : base(data) {
             Blitter.Initialize(data.shaders.coreBlitPS, data.shaders.coreBlitColorAndDepthPS);
 
@@ -182,7 +182,7 @@ namespace UnityEngine.Rendering.Universal {
 
             this.stripShadowsOffVariants = true;
             this.stripAdditionalLightOffVariants = true;
-            
+
             ForwardLights.InitParams forwardInitParams;
             forwardInitParams.lightCookieManager = m_LightCookieManager;
             forwardInitParams.clusteredRendering = data.clusteredRendering;
@@ -439,7 +439,10 @@ namespace UnityEngine.Rendering.Universal {
 
             // TODO: We could cache and generate the LUT before rendering the stack
             bool generateColorGradingLUT = cameraData.postProcessEnabled && m_PostProcessPasses.isCreated;
+        #if UNITY_EDITOR
             bool isSceneViewCamera = cameraData.isSceneViewCamera;
+        #endif
+
             useDepthPriming = IsDepthPrimingEnabled(ref cameraData);
 
             // This indicates whether the renderer will output a depth texture.
@@ -461,7 +464,10 @@ namespace UnityEngine.Rendering.Universal {
             // - Scene or preview cameras always require a depth texture. We do a depth pre-pass to simplify it and it shouldn't matter much for editor.
             // - Render passes require it
             bool requiresDepthPrepass = (requiresDepthTexture || cameraHasPostProcessingWithDepth) && (!CanCopyDepth(ref renderingData.cameraData) || forcePrepass);
+        #if UNITY_EDITOR
             requiresDepthPrepass |= isSceneViewCamera;
+        #endif
+
             requiresDepthPrepass |= isGizmosEnabled;
             requiresDepthPrepass |= isPreviewCamera;
             requiresDepthPrepass |= renderPassInputs.requiresDepthPrepass;
@@ -492,7 +498,13 @@ namespace UnityEngine.Rendering.Universal {
                 }
 
                 m_CopyDepthPass.renderPassEvent = copyDepthPassEvent;
-            } else if (cameraHasPostProcessingWithDepth || isSceneViewCamera || isGizmosEnabled) {
+            } else if (cameraHasPostProcessingWithDepth
+                   #if UNITY_EDITOR
+                     ||
+                       isSceneViewCamera
+                   #endif
+                     ||
+                       isGizmosEnabled) {
                 // If only post process requires depth texture, we can re-use depth buffer from main geometry pass instead of enqueuing a depth copy pass, but no proper API to do that for now, so resort to depth copy pass for now
                 m_CopyDepthPass.renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
             }
@@ -570,7 +582,11 @@ namespace UnityEngine.Rendering.Universal {
                     mainLightShadows = false;
                     additionalLightShadows = false;
 
-                    if (!isSceneViewCamera) {
+                #if UNITY_EDITOR
+                    if (!isSceneViewCamera) 
+                #endif
+                    
+                    {
                         requiresDepthPrepass = false;
                         generateColorGradingLUT = false;
                         copyColorPass = false;
@@ -1024,14 +1040,19 @@ namespace UnityEngine.Rendering.Universal {
             // This incurs an extra blit into at the end of rendering.
             if (this.actualRenderingMode == RenderingMode.Deferred)
                 return true;
-
+        #if UNITY_EDITOR
             bool isSceneViewCamera = cameraData.isSceneViewCamera;
+        #endif
             var cameraTargetDescriptor = cameraData.cameraTargetDescriptor;
             int msaaSamples = cameraTargetDescriptor.msaaSamples;
             bool isScaledRender = cameraData.imageScalingMode != ImageScalingMode.None;
             bool isCompatibleBackbufferTextureDimension = cameraTargetDescriptor.dimension == TextureDimension.Tex2D;
             bool requiresExplicitMsaaResolve = msaaSamples > 1 && PlatformRequiresExplicitMsaaResolve();
-            bool isOffscreenRender = cameraData.targetTexture != null && !isSceneViewCamera;
+            bool isOffscreenRender = cameraData.targetTexture != null
+        #if UNITY_EDITOR
+                                  && !isSceneViewCamera
+                #endif
+                    ;
             bool isCapturing = cameraData.captureActions != null;
 
             bool requiresBlitForOffscreenCamera = cameraData.postProcessEnabled || cameraData.requiresOpaqueTexture || requiresExplicitMsaaResolve || !cameraData.isDefaultViewport;
@@ -1040,7 +1061,9 @@ namespace UnityEngine.Rendering.Universal {
                 return requiresBlitForOffscreenCamera;
 
             return requiresBlitForOffscreenCamera ||
+               #if UNITY_EDITOR
                    isSceneViewCamera ||
+               #endif
                    isScaledRender ||
                    cameraData.isHdrEnabled ||
                    !isCompatibleBackbufferTextureDimension ||

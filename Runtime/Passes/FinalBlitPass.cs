@@ -34,8 +34,11 @@ namespace UnityEngine.Rendering.Universal.Internal {
 
             ref CameraData cameraData = ref renderingData.cameraData;
             RenderTargetIdentifier cameraTarget = (cameraData.targetTexture != null) ? new RenderTargetIdentifier(cameraData.targetTexture) : BuiltinRenderTextureType.CameraTarget;
-
+        
+        #if UNITY_EDITOR
             bool isSceneViewCamera = cameraData.isSceneViewCamera;
+        #endif
+            
             CommandBuffer cmd = CommandBufferPool.Get();
 
             if (m_Source == cameraData.renderer.GetCameraColorFrontBuffer(cmd)) {
@@ -48,7 +51,11 @@ namespace UnityEngine.Rendering.Universal.Internal {
 
             cmd.SetGlobalTexture(ShaderPropertyId.sourceTex, m_Source);
 
-            if (isSceneViewCamera || cameraData.isDefaultViewport) {
+            if (
+            #if UNITY_EDITOR
+                    isSceneViewCamera || 
+            #endif
+                    cameraData.isDefaultViewport) {
                 // This set render target is necessary so we change the LOAD state to DontCare.
                 cmd.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, // color
                         RenderBufferLoadAction.DontCare, RenderBufferStoreAction.DontCare); // depth

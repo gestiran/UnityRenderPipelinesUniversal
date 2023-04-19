@@ -110,22 +110,15 @@ namespace UnityEngine.Rendering.Universal
     internal class DecalUpdateCachedSystem
     {
         private DecalEntityManager m_EntityManager;
-        private ProfilingSampler m_Sampler;
-        private ProfilingSampler m_SamplerJob;
-
+        
         public DecalUpdateCachedSystem(DecalEntityManager entityManager)
         {
             m_EntityManager = entityManager;
-            m_Sampler = new ProfilingSampler("DecalUpdateCachedSystem.Execute");
-            m_SamplerJob = new ProfilingSampler("DecalUpdateCachedSystem.ExecuteJob");
         }
 
-        public void Execute()
-        {
-            using (new ProfilingScope(null, m_Sampler))
-            {
-                for (int i = 0; i < m_EntityManager.chunkCount; ++i)
-                    Execute(m_EntityManager.entityChunks[i], m_EntityManager.cachedChunks[i], m_EntityManager.entityChunks[i].count);
+        public void Execute() {
+            for (int i = 0; i < m_EntityManager.chunkCount; ++i) {
+                Execute(m_EntityManager.entityChunks[i], m_EntityManager.cachedChunks[i], m_EntityManager.entityChunks[i].count);
             }
         }
 
@@ -160,26 +153,23 @@ namespace UnityEngine.Rendering.Universal
 
                 cachedChunk.isCreated = true;
             }
+            
+            UpdateTransformsJob updateTransformJob = new UpdateTransformsJob()
+                                                     {
+                                                     positions = cachedChunk.positions,
+                                                     rotations = cachedChunk.rotation,
+                                                     scales = cachedChunk.scales,
+                                                     dirty = cachedChunk.dirty,
+                                                     scaleModes = cachedChunk.scaleModes,
+                                                     sizeOffsets = cachedChunk.sizeOffsets,
+                                                     decalToWorlds = cachedChunk.decalToWorlds,
+                                                     normalToWorlds = cachedChunk.normalToWorlds,
+                                                     boundingSpheres = cachedChunk.boundingSpheres,
+                                                     minDistance = System.Single.Epsilon,
+                                                     };
 
-            using (new ProfilingScope(null, m_SamplerJob))
-            {
-                UpdateTransformsJob updateTransformJob = new UpdateTransformsJob()
-                {
-                    positions = cachedChunk.positions,
-                    rotations = cachedChunk.rotation,
-                    scales = cachedChunk.scales,
-                    dirty = cachedChunk.dirty,
-                    scaleModes = cachedChunk.scaleModes,
-                    sizeOffsets = cachedChunk.sizeOffsets,
-                    decalToWorlds = cachedChunk.decalToWorlds,
-                    normalToWorlds = cachedChunk.normalToWorlds,
-                    boundingSpheres = cachedChunk.boundingSpheres,
-                    minDistance = System.Single.Epsilon,
-                };
-
-                var handle = updateTransformJob.Schedule(entityChunk.transformAccessArray);
-                cachedChunk.currentJobHandle = handle;
-            }
+            var handle = updateTransformJob.Schedule(entityChunk.transformAccessArray);
+            cachedChunk.currentJobHandle = handle;
         }
 
 #if ENABLE_BURST_1_0_0_OR_NEWER

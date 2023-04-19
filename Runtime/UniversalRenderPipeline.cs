@@ -142,11 +142,7 @@ namespace UnityEngine.Rendering.Universal {
         #endif
 
             SortCameras(cameras);
-        #if UNITY_2021_1_OR_NEWER
             for (int i = 0; i < cameras.Count; ++i)
-        #else
-            for (int i = 0; i < cameras.Length; ++i)
-        #endif
             {
                 var camera = cameras[i];
 
@@ -154,11 +150,6 @@ namespace UnityEngine.Rendering.Universal {
                     RenderCameraStack(renderContext, camera);
                 } else {
                     BeginCameraRendering(renderContext, camera);
-
-                #if VISUAL_EFFECT_GRAPH_0_0_1_OR_NEWER
-                    //It should be called before culling to prepare material. When there isn't any VisualEffect component, this method has no effect.
-                    VFX.VFXManager.PrepareCamera(camera);
-                #endif
                     UpdateVolumeFramework(camera, null);
                     RenderSingleCamera(renderContext, camera);
                     EndCameraRendering(renderContext, camera);
@@ -196,8 +187,10 @@ namespace UnityEngine.Rendering.Universal {
                 return;
 
             ScriptableRenderer.current = renderer;
+        #if UNITY_EDITOR
             bool isSceneViewCamera = cameraData.isSceneViewCamera;
-
+        #endif
+            
             CommandBuffer cmd = CommandBufferPool.Get();
             
             renderer.Clear(cameraData.renderType);
@@ -208,8 +201,6 @@ namespace UnityEngine.Rendering.Universal {
             cmd.Clear();
 
         #if UNITY_EDITOR
-
-            // Emit scene view UI
             if (isSceneViewCamera) {
                 ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
             }
@@ -425,6 +416,8 @@ namespace UnityEngine.Rendering.Universal {
             var settings = asset;
             cameraData.targetTexture = baseCamera.targetTexture;
             cameraData.cameraType = baseCamera.cameraType;
+            
+        #if UNITY_EDITOR
             bool isSceneViewCamera = cameraData.isSceneViewCamera;
 
             if (isSceneViewCamera) {
@@ -434,7 +427,9 @@ namespace UnityEngine.Rendering.Universal {
                 cameraData.isDitheringEnabled = false;
                 cameraData.antialiasing = AntialiasingMode.None;
                 cameraData.antialiasingQuality = AntialiasingQuality.High;
-            } else if (baseAdditionalCameraData != null) {
+            } else 
+        #endif
+            if (baseAdditionalCameraData != null) {
                 cameraData.volumeLayerMask = baseAdditionalCameraData.volumeLayerMask;
                 cameraData.volumeTrigger = baseAdditionalCameraData.volumeTrigger == null ? baseCamera.transform : baseAdditionalCameraData.volumeTrigger;
                 cameraData.isStopNaNEnabled = baseAdditionalCameraData.stopNaN && SystemInfo.graphicsShaderLevel >= 35;
@@ -512,8 +507,7 @@ namespace UnityEngine.Rendering.Universal {
             if (cameraData.camera.cameraType == CameraType.Preview) {
                 camera.backgroundColor = CoreRenderPipelinePreferences.previewBackgroundColor;
             }
-        #endif
-
+            
             bool isSceneViewCamera = cameraData.isSceneViewCamera;
 
             if (isSceneViewCamera) {
@@ -523,7 +517,9 @@ namespace UnityEngine.Rendering.Universal {
                 cameraData.requiresDepthTexture = settings.supportsCameraDepthTexture;
                 cameraData.requiresOpaqueTexture = settings.supportsCameraOpaqueTexture;
                 cameraData.renderer = asset.scriptableRenderer;
-            } else if (additionalCameraData != null) {
+            } else 
+        #endif
+            if (additionalCameraData != null) {
                 cameraData.renderType = additionalCameraData.renderType;
                 cameraData.clearDepth = (additionalCameraData.renderType != CameraRenderType.Base) ? additionalCameraData.clearDepth : true;
                 cameraData.postProcessEnabled = additionalCameraData.renderPostProcessing;
@@ -542,8 +538,11 @@ namespace UnityEngine.Rendering.Universal {
 
             // Disables post if GLes2
             cameraData.postProcessEnabled &= SystemInfo.graphicsDeviceType != GraphicsDeviceType.OpenGLES2;
-
+                    
+        #if UNITY_EDITOR
             cameraData.requiresDepthTexture |= isSceneViewCamera;
+        #endif
+            
             cameraData.postProcessingRequiresDepthTexture |= CheckPostProcessForDepth(cameraData);
             cameraData.resolveFinalTarget = resolveFinalTarget;
 
